@@ -30,6 +30,9 @@ button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;z-index:9}
 input.q{max-width:280px}
 [hidden]{display:none!important}
+button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.bill{display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--line);padding-top:10px}.bill button{min-height:36px;font-size:14px;padding:0 10px}
+.pill.trial{background:#c27a00;color:#fff}.pill.exp{background:#b3261e;color:#fff}.pill.paid{background:#1f8a4c;color:#fff}
 </style></head><body><div class="wrap">
 
 <div id="login" class="card" style="max-width:420px;margin:60px auto">
@@ -44,6 +47,11 @@ input.q{max-width:280px}
   <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><a class="ghost" href="nihul-40b5b0.html" style="display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:2px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;font-weight:600">⚙️ דף מנהל</a><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
  </div>
  <div class="stats" id="stats"></div>
+ <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button></div>
+ <div class="card" id="setCard" hidden><h2>💳 מה המשפחות רואות כשהניסיון נגמר</h2>
+  <label class="mut">מחיר</label><input id="sPrice" maxlength="60">
+  <label class="mut" style="display:block;margin-top:10px">הסבר איך משלמים (מספר ביט / פייבוקס וכו׳)</label><textarea id="sPay" maxlength="600" style="width:100%;min-height:90px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--bg);color:inherit;font:inherit"></textarea>
+  <button id="sSave" style="margin-top:10px">שמירה</button></div>
  <div id="fams"></div>
 </div>
 </div>
@@ -52,7 +60,7 @@ const SB_URL='https://iqspnyespxskqrznpvcz.supabase.co',SB_KEY='sb_publishable_X
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)};
-let PASS='',DATA=null,timer=null;
+let PASS='',DATA=null,timer=null,MODE='on';
 const ago=t=>{if(!t)return'—';const ms=Date.now()-new Date(t).getTime();const m=Math.round(ms/60000);if(m<1)return'עכשיו';if(m<60)return`לפני ${m} דק׳`;const h=Math.round(m/60);if(h<24)return`לפני ${h} שע׳`;const d=Math.round(h/24);return`לפני ${d} ימים`};
 const AVC=['#d8452e','#1f5fbf','#1f8a4c','#8a3fbf','#c27a00','#0f8a8a','#b8326e','#4d5b70'];
 const col=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return AVC[Math.abs(h)%AVC.length]};
@@ -68,15 +76,30 @@ function draw(){
  const live=F.filter(f=>f.presence&&f.presence.on&&now-f.presence.t<3*3600e3);
  $('stats').innerHTML=[['🟢','מחוברים עכשיו',mem],['👨‍👩‍👧','משפחות מחוברות',active],['🛒','בסופר עכשיו',live.length]].map(([i,t,v])=>`<div class="stat"><span class="mut">${i} ${t}</span><b>${v}</b></div>`).join('');
  $('upd').textContent='עודכן '+new Date().toLocaleTimeString('he-IL')+' · מתרענן כל 30 שניות';
- const list=F.filter(f=>(f.members||[]).some(isOn)).filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
+ const list=F.filter(f=>MODE==='all'||(f.members||[]).some(isOn)).filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
  $('fams').innerHTML=list.map(f=>{
   const p=f.presence,inStore=p&&p.on&&now-p.t<3*3600e3,who=inStore?(f.members||[]).find(m=>m.id===p.by):null;
-  const ms=(f.members||[]).filter(isOn).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
-   return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot on"></span>מחובר/ת</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
+  const ms=(f.members||[]).filter(m=>MODE==='all'||isOn(m)).map(m=>{const on=isOn(m);const nm=m.name||'ללא שם',seen=m.seen;
+   return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot${on?' on':''}"></span>${on?'מחובר/ת':'לא מחובר/ת'}</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
   return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}</div>
    <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}${f.code?`<a class="pill" style="background:var(--acc);color:#fff;text-decoration:none" href="nihul-40b5b0.html?code=${encodeURIComponent(f.code)}">⚙️ לניהול המשפחה</a>`:''}</div></div>
    <div class="members">${ms}</div>
-   <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut" style="text-align:center;padding:30px">😴 אף אחד לא מחובר כרגע</div>'}
+   ${bill(f)}
+   <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||(MODE==='all'?'<div class="card mut">אין משפחות</div>':'<div class="card mut" style="text-align:center;padding:30px">😴 אף אחד לא מחובר כרגע</div>')}
+const dd=t=>t?new Date(t).toLocaleDateString('he-IL'):'';
+function bill(f){const st=f.state,pu=f.paid_until&&new Date(f.paid_until).getFullYear()>=2099;
+ const pill=st==='paid'?`<span class="pill paid">✅ ${pu?'חינם לתמיד':'משלם/ת עד '+dd(f.paid_until)}</span>`:st==='trial'?`<span class="pill trial">⏳ ניסיון עד ${dd(f.trial_until)}</span>`:`<span class="pill exp">⛔ הניסיון נגמר ${dd(f.trial_until)}</span>`;
+ const b=(a,d,t)=>`<button class="ghost" data-fid="${esc(f.fid)}" data-a="${a}" data-d="${d}">${t}</button>`;
+ return `<div class="bill">${pill}${b('paid',30,'💳 שילם · חודש')}${b('paid',365,'💳 שנה')}${b('trial',7,'⏳ +7 ימי ניסיון')}${pu?'':b('free',0,'🎁 חינם')}${st==='expired'?'':b('stop',0,'⛔ עצירה')}</div>`}
+$('fams').addEventListener('click',async e=>{const x=e.target.closest('[data-fid]');if(!x)return;
+ if(x.dataset.a==='stop'&&!x.dataset.arm){x.dataset.arm=1;x.textContent='בטוח? לחצו שוב';return}
+ try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_bill',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,fid:x.dataset.fid,action:x.dataset.a,days:+x.dataset.d||0})});
+  const j=await r.json();if(!j)return toast('נכשל');toast({paid:'המנוי הוארך',trial:'הניסיון הוארך',free:'הוגדר חינם',stop:'המנוי נעצר'}[x.dataset.a]);load()}catch(err){toast('אין חיבור')}});
+const mode=m=>{MODE=m;$('fOn').setAttribute('aria-pressed',m==='on');$('fAll').setAttribute('aria-pressed',m==='all');DATA&&draw()};
+$('fOn').onclick=()=>mode('on');$('fAll').onclick=()=>mode('all');
+$('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DATA){$('sPrice').value=DATA.price||'';$('sPay').value=DATA.payinfo||''}};
+$('sSave').onclick=async()=>{try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_pub',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,price:$('sPrice').value.trim(),payinfo:$('sPay').value.trim()})});
+ if(await r.json()){toast('נשמר');$('setCard').hidden=true;load()}else toast('נכשל')}catch(e){toast('אין חיבור')}};
 $('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
  try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
 $('ref').onclick=()=>load().then(()=>toast('עודכן')).catch(()=>toast('אין חיבור'));

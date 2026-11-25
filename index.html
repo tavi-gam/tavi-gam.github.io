@@ -331,11 +331,38 @@ const user={id:async()=>cfg.uid,isOwner:async()=>false,canEdit:async()=>true,can
  profiles:async ids=>{const m=members();const o={};[].concat(ids).forEach(i=>o[i]={id:i,name:i===cfg.uid?(cfg.name||''):((m[i]&&typeof m[i].name==='string'?m[i].name:'')||''),emo:i===cfg.uid?(cfg.emo||''):(m[i]&&EMOS.includes(m[i].emo)?m[i].emo:''),isMe:i===cfg.uid,avatarUrl:'',color:'#888',email:null,guest:false,roles:null});return o}};
 
 /* ---- start after joining ---- */
+/* ---- trial / subscription ---- */
+async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.code})}catch(e){return}
+ let pw=document.getElementById('paywall'),tb=document.getElementById('trialbar');
+ if(!b||b.state==='paid'){pw&&pw.remove();tb&&tb.remove();return}
+ const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ if(b.state==='trial'){pw&&pw.remove();const days=Math.max(0,Math.ceil((new Date(b.trial_until)-Date.now())/864e5));
+  if(days>5){tb&&tb.remove();return}
+  if(!tb){tb=document.createElement('div');tb.id='trialbar';tb.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:24;background:#c27a00;color:#fff;border-radius:14px;padding:10px 14px;font:600 15px system-ui;display:flex;gap:10px;align-items:center;justify-content:space-between;box-shadow:0 6px 20px rgba(0,0,0,.25)';document.body.appendChild(tb)}
+  tb.innerHTML=`<span>⏳ ${days?`נשארו ${days} ימים לתקופת הניסיון`:'תקופת הניסיון מסתיימת היום'}</span><button type="button" style="background:#fff;color:#c27a00;border:0;border-radius:10px;min-height:36px;padding:0 12px;font-weight:700">להמשיך להשתמש</button>`;
+  tb.querySelector('button').onclick=()=>showPay(b,false);return}
+ tb&&tb.remove();showPay(b,true)}
+function showPay(b,locked){const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ let pw=document.getElementById('paywall');if(!pw){pw=document.createElement('div');pw.id='paywall';document.body.appendChild(pw)}
+ pw.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(20,24,32,.75);display:flex;align-items:center;justify-content:center;padding:18px';
+ pw.innerHTML=`<div role="dialog" aria-modal="true" style="background:#fffdf8;color:#1d2433;border-radius:22px;max-width:440px;width:100%;padding:26px 22px;text-align:center;font-family:system-ui">
+  <div style="font-size:60px">🛒</div><h2 style="margin:6px 0 8px;font-size:24px">${locked?'תקופת הניסיון הסתיימה':'ממשיכים עם תביא גם'}</h2>
+  <p style="margin:0 0 14px;font-size:16px;line-height:1.5">${locked?'הרשימה שלכם שמורה ומחכה. כדי להמשיך להוסיף ולסמן מוצרים צריך להפעיל מנוי.':'אהבתם? אפשר להפעיל מנוי כבר עכשיו.'}</p>
+  <div style="font:800 28px system-ui;color:#d8452e;margin:6px 0">${E(b.price)}</div>
+  <p style="background:#f4efe6;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;white-space:pre-wrap;margin:12px 0">${E(b.payinfo)}</p>
+  <p style="font-size:15px;margin:8px 0">קוד המשפחה שלכם: <b style="font-family:ui-monospace,monospace;direction:ltr;display:inline-block">${E(cfg.code)}</b></p>
+  <div style="display:flex;gap:10px;margin-top:14px"><button type="button" id="payChk" style="flex:1;min-height:50px;border:0;border-radius:14px;background:#1f8a4c;color:#fff;font:700 17px system-ui">שילמתי · לבדוק שוב</button>${locked?'':'<button type="button" id="payX" style="flex:1;min-height:50px;border:2px solid #e6dfd2;border-radius:14px;background:transparent;font:600 17px system-ui">אחר כך</button>'}</div>
+  ${locked?'<button type="button" id="payOut" style="margin-top:12px;background:none;border:0;color:#6b7280;text-decoration:underline;font:14px system-ui">יציאה / כניסה עם קוד אחר</button>':''}</div>`;
+ pw.querySelector('#payChk').onclick=async()=>{await billing();const st=document.getElementById('paywall');if(st&&locked){st.querySelector('#payChk').textContent='עוד לא הופעל · נסו שוב בעוד כמה דקות'}};
+ const x=pw.querySelector('#payX');if(x)x.onclick=()=>pw.remove();
+ const o=pw.querySelector('#payOut');if(o)o.onclick=()=>window.__shopLeave&&window.__shopLeave()}
+
 let ready;const readyP=new Promise(r=>ready=r);
 window.claude={use:async n=>{await readyP;return n==='db'?db:n==='user'?user:null}};
 async function start(){
  colSubs.push({path:'members',next:()=>{}});
  try{await rpc('shop_join',{code:cfg.code})}catch(e){if(!Object.keys(cache).length)throw e;online=false}
+ billing();setInterval(()=>{if(!document.hidden)billing()},10*60*1000);
  write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''});
  setInterval(()=>{if(document.visibilityState==='visible'&&online)write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''})},2*60*1000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''})});
