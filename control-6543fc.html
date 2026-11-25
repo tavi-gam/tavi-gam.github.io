@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>תביא גם · שליטה</title>
+<style>
+:root{--ink:#1d2433;--paper:#fffdf8;--bg:#f4efe6;--line:#e6dfd2;--acc:#d8452e;--blue:#1f5fbf;--ok:#1f8a4c;--mut:#6b7280;--chip:#f1ebe0}
+[data-theme=dark]{--ink:#e8e6e1;--paper:#1f232b;--bg:#14171c;--line:#353b46;--mut:#9aa3b2;--chip:#2a2f38;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:4px 0}h2{font-size:18px;margin:0 0 8px}.mut{color:var(--mut);font-size:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+input,button{font:inherit;font-size:16px}
+input{width:100%;min-height:46px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--bg);color:inherit}
+button{min-height:42px;border:0;border-radius:12px;padding:0 14px;background:var(--acc);color:#fff;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px}.stat b{display:block;font-size:30px}
+.fam{display:grid;gap:10px}.famh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.code{font:700 20px ui-monospace,Menlo,monospace;background:var(--chip);border-radius:10px;padding:4px 10px;direction:ltr;display:inline-block}
+.pill{display:inline-block;border-radius:99px;padding:3px 10px;font-size:13px;font-weight:600;background:var(--chip)}
+.pill.live{background:#1f8a4c;color:#fff}.pill.idle{background:var(--chip);color:var(--mut)}
+.members{display:flex;flex-wrap:wrap;gap:8px}
+.mem{display:flex;align-items:center;gap:8px;background:var(--chip);border-radius:99px;padding:4px 12px 4px 6px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px;color:#fff;font-weight:700}
+.mem small{color:var(--mut);display:block;font-size:12px}
+.nums{display:flex;gap:18px;flex-wrap:wrap;font-size:14px}.nums b{font-size:18px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-inline-end:6px;background:#9aa3b2}.dot.on{background:#1f8a4c;box-shadow:0 0 0 4px rgba(31,138,76,.2)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;z-index:9}
+input.q{max-width:280px}
+[hidden]{display:none!important}
+</style></head><body><div class="wrap">
+
+<div id="login" class="card" style="max-width:420px;margin:60px auto">
+ <h1>🔐 שליטה</h1>
+ <form id="lf"><label class="mut" for="pw">סיסמה</label><input id="pw" type="password" autocomplete="current-password">
+ <button style="width:100%;margin-top:12px">כניסה</button><p id="err" class="mut" role="alert"></p></form>
+</div>
+
+<div id="app" hidden>
+ <div class="top">
+  <div><h1>🛒 תביא גם · לוח שליטה</h1><div class="mut" id="upd"></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
+ </div>
+ <div class="stats" id="stats"></div>
+ <div id="fams"></div>
+</div>
+</div>
+<script>
+const SB_URL='https://iqspnyespxskqrznpvcz.supabase.co',SB_KEY='sb_publishable_XZF0tC5GMduD2LHvZ70D5g_9eUZs9vi';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)};
+let PASS='',DATA=null,timer=null;
+const ago=t=>{if(!t)return'—';const ms=Date.now()-new Date(t).getTime();const m=Math.round(ms/60000);if(m<1)return'עכשיו';if(m<60)return`לפני ${m} דק׳`;const h=Math.round(m/60);if(h<24)return`לפני ${h} שע׳`;const d=Math.round(h/24);return`לפני ${d} ימים`};
+const AVC=['#d8452e','#1f5fbf','#1f8a4c','#8a3fbf','#c27a00','#0f8a8a','#b8326e','#4d5b70'];
+const col=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return AVC[Math.abs(h)%AVC.length]};
+async function load(){
+ const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS})});
+ if(!r.ok)throw new Error('net');const j=await r.json();if(!j)return false;DATA=j;draw();return true}
+function draw(){
+ const F=(DATA.families||[]),q=$('q').value.trim().toLowerCase();
+ const now=Date.now(),day=864e5;
+ const mem=F.reduce((a,f)=>a+(f.members||[]).length,0);
+ const active=F.filter(f=>f.last&&now-new Date(f.last)<day).length;
+ const live=F.filter(f=>f.presence&&f.presence.on&&now-f.presence.t<3*3600e3);
+ $('stats').innerHTML=[['👨‍👩‍👧','משפחות',F.length],['🙋','משתמשים',mem],['⚡','פעילות היום',active],['🛒','בסופר עכשיו',live.length]].map(([i,t,v])=>`<div class="stat"><span class="mut">${i} ${t}</span><b>${v}</b></div>`).join('');
+ $('upd').textContent='עודכן '+new Date().toLocaleTimeString('he-IL')+' · מתרענן כל 30 שניות';
+ const list=F.filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
+ $('fams').innerHTML=list.map(f=>{
+  const p=f.presence,inStore=p&&p.on&&now-p.t<3*3600e3,who=inStore?(f.members||[]).find(m=>m.id===p.by):null;
+  const ms=(f.members||[]).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
+   return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot${on?' on':''}"></span>${on?'פעיל עכשיו':'נכנס '+ago(seen)}</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
+  return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}
+   <div class="mut" style="margin-top:6px">נוצרה ${f.created?new Date(f.created).toLocaleDateString('he-IL'):'—'} · פעילות אחרונה ${ago(f.last)}</div></div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}</div></div>
+   <div class="members">${ms}</div>
+   <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut">לא נמצאו משפחות</div>'}
+$('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
+ try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
+$('ref').onclick=()=>load().then(()=>toast('עודכן')).catch(()=>toast('אין חיבור'));
+$('out').onclick=()=>{try{sessionStorage.removeItem('tg-sup')}catch(e){}location.reload()};
+$('q').addEventListener('input',()=>DATA&&draw());
+let TH='light';try{TH=localStorage.getItem('tg-sup-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}
+const theme=t=>{TH=t;document.documentElement.dataset.theme=t;$('theme').textContent=t==='dark'?'☀️':'🌙';try{localStorage.setItem('tg-sup-theme',t)}catch(e){}};
+$('theme').onclick=()=>theme(TH==='dark'?'light':'dark');theme(TH);
+(async()=>{try{const s=sessionStorage.getItem('tg-sup');if(s){PASS=s;if(await load()){$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}}}catch(e){}})();
+</script></body></html>
