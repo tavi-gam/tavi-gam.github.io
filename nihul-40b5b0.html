@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>תביא גם</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--ink:#1d2433;--paper:#fffdf8;--line:#e6dfd2;--acc:#d8452e;--blue:#1f5fbf;--mut:#6b7280}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#f4efe6;color:var(--ink);font-size:16px}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:6px 0 2px}h2{font-size:19px;margin:18px 0 8px}.mut{color:var(--mut);font-size:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+input,select,textarea,button{font:inherit;font-size:16px}
+input,select,textarea{width:100%;min-height:46px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff;color:inherit}
+textarea{min-height:90px;resize:vertical}
+label{display:grid;gap:6px;margin:10px 0;font-weight:500}
+button{min-height:46px;border:0;border-radius:12px;padding:0 16px;background:var(--acc);color:#fff;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}button.blue{background:var(--blue)}
+button.sm{min-height:36px;padding:0 10px;font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+.tabs{display:flex;gap:6px;background:#e9e2d5;border-radius:14px;padding:4px;margin-top:12px}
+.tabs button{flex:1;background:transparent;color:var(--ink);min-height:42px}.tabs button[aria-selected=true]{background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+th{font-size:13px;color:var(--mut);font-weight:600}
+.sale{color:var(--acc);font-weight:600}.pill{display:inline-block;background:#fde8e4;color:var(--acc);border-radius:99px;padding:2px 8px;font-size:13px}
+.res{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:6px}
+.res button{display:flex;justify-content:space-between;width:100%;background:#fff;color:var(--ink);border-radius:0;border-bottom:1px solid var(--line);min-height:44px;font-weight:400}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:9;max-width:90%}
+[hidden]{display:none!important}
+[data-theme=dark]{--ink:#e8e6e1;--paper:#1f232b;--line:#353b46;--mut:#9aa3b2;color-scheme:dark}
+[data-theme=dark] body{background:#14171c}
+[data-theme=dark] input,[data-theme=dark] select,[data-theme=dark] textarea,[data-theme=dark] .res button{background:#14171c}
+[data-theme=dark] .tabs{background:#2a2f38}
+[data-theme=dark] .pill{background:#4a2620}
+[data-theme=dark] .toast{background:#e8e6e1;color:#14171c}
+</style></head><body><div class="wrap">
+
+<div id="login" class="card" style="margin-top:40px">
+ <h1>🔒 כניסה</h1>
+ <form id="lform">
+  <label>קוד משפחה<input id="lcode" autocomplete="off" inputmode="numeric"></label>
+  <label>סיסמה<input id="lpass" type="password" autocomplete="current-password"></label>
+  <button type="submit" style="width:100%">כניסה</button>
+  <p id="lerr" class="mut" role="alert"></p>
+ </form>
+</div>
+
+<div id="app" hidden>
+ <div class="row" style="justify-content:space-between"><div><h1>⚙️ ניהול · תביא גם</h1><div class="mut">שינויים כאן מופיעים אצל כל בני המשפחה</div></div>
+  <div style="flex:0 0 auto;display:flex;gap:6px;align-items:center"><button class="ghost sm" id="theme" aria-label="מצב כהה או בהיר">🌙 כהה</button>
+  <button class="ghost sm" id="logout">יציאה</button></div></div>
+ <div class="tabs" role="tablist">
+  <button role="tab" data-t="prices" aria-selected="true">💰 מחירים</button>
+  <button role="tab" data-t="cat" aria-selected="false">⭐ מוצרים</button>
+  <button role="tab" data-t="msg" aria-selected="false">📢 הודעה</button>
+ </div>
+
+ <section id="t-prices">
+  <div class="card">
+   <label>רשת<select id="chain"></select></label>
+   <label>חיפוש מוצר<input id="pq" placeholder="למשל: חלב, קוטג׳, במבה" autocomplete="off"></label>
+   <div class="res" id="pres" hidden></div>
+   <div id="pedit" hidden>
+    <h2 id="pname"></h2><div class="mut" id="pcur"></div>
+    <label>מחיר רגיל (₪)<input id="pp" inputmode="decimal"></label>
+    <div class="row"><label>מחיר מבצע (₪)<input id="ps" inputmode="decimal" placeholder="ריק = אין מבצע"></label>
+     <label>מבצע עד<input id="pu" type="date"></label></div>
+    <div class="row"><button id="psave">שמירה</button><button class="ghost" id="pclear">מחיקת המחיר ברשת הזו</button></div>
+   </div>
+  </div>
+  <div class="card"><h2 style="margin-top:0">מחירים שמורים ב<span id="chn"></span></h2>
+   <table><thead><tr><th>מוצר</th><th>רגיל</th><th>מבצע</th><th></th></tr></thead><tbody id="plist"></tbody></table>
+   <p class="mut" id="pempty"></p></div>
+ </section>
+
+ <section id="t-cat" hidden>
+  <div class="card"><h2 style="margin-top:0">➕ מוצר חדש</h2>
+   <div class="row"><label>שם<input id="nn" maxlength="40"></label><label>מחלקה<select id="nc"></select></label></div>
+   <button id="nadd">הוספה לקטלוג</button></div>
+  <div class="card"><h2 style="margin-top:0">מוצרים שהמשפחה הוסיפה</h2>
+   <table><thead><tr><th>שם</th><th>מחלקה</th><th></th></tr></thead><tbody id="clist"></tbody></table>
+   <p class="mut" id="cempty"></p></div>
+ </section>
+
+ <section id="t-msg" hidden>
+  <div class="card">
+   <label>כותרת<input id="mt" maxlength="60" placeholder="למשל: עדכון באפליקציה"></label>
+   <label>תוכן<textarea id="mb" maxlength="400" placeholder="מה רוצים להגיד לכולם?"></textarea></label>
+   <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" id="mpush" checked style="width:22px;min-height:22px"> לשלוח גם התראה לטלפונים</label>
+   <button class="blue" id="msend" style="width:100%">📢 שליחה לכולם</button>
+   <p class="mut">ההודעה תופיע כבאנר בראש האפליקציה אצל כולם עד שיסגרו אותה (עד שבועיים).</p>
+  </div>
+  <div class="card" id="mlast" hidden><h2 style="margin-top:0">ההודעה האחרונה</h2><div id="mlastb"></div>
+   <button class="ghost sm" id="mdel" style="margin-top:8px">הסרת הבאנר</button></div>
+ </section>
+</div>
+</div>
+<script>
+const AISLES=['פירות וירקות','מאפייה ולחם','מעדנייה וסלטים','בשר, עוף ודגים','חלב, גבינות וביצים','מזווה ובישול','דגנים, ממרחים וקפה','חטיפים ומתוקים','שתייה','קפואים','ניקיון ובית','טיפוח ופארם','תינוקות','חיות מחמד','אחר'];
+const P=s=>s.split('|');
+const CAT=[
+ P('עגבניות|עגבניות שרי|מלפפונים|בצל|בצל סגול|שום|תפוחי אדמה|בטטה|גזר|פלפל אדום|פלפל צהוב|פלפל ירוק|פלפל חריף|חסה|חסה ערבית|כרוב|כרוב סגול|כרובית|ברוקולי|חציל|קישוא|דלעת|סלק|צנון|קולרבי|סלרי|שומר|לוף|תרד|עלי בייבי|נבטים|פטריות|פטריות פורטובלו|ג׳ינג׳ר|לימון|ליים|אבוקדו|פטרוזיליה|כוסברה|שמיר|נענע|בזיליקום|בצל ירוק|תירס טרי|תפוחים|בננות|תפוזים|קלמנטינות|אשכוליות|פומלה|אגסים|ענבים|תותים|אוכמניות|רימונים|אבטיח|מלון|נקטרינות|אפרסקים|שזיפים|משמש|דובדבנים|תאנים|מנגו|אננס|אפרסמון|קיווי|פסיפלורה|תמרים'),
+ P('לחם פרוס|לחם מלא|לחם שיפון|לחם כוסמין|לחם ללא גלוטן|חלה|חלה מתוקה|פיתות|פיתות מלאות|לחמניות|לחמניות המבורגר|לחמניות נקניקיה|באגט|ג׳בטה|לאפה|טורטיות|בייגל|קרואסונים|עוגת שמרים|עוגה|עוגיות|רוגלך|בורקס|מאפה גבינה|פיצה משפחתית'),
+ P('חומוס|טחינה מוכנה|סלט חצילים|חציל במיונז|מטבוחה|סחוג|כרוב סלט|סלט טונה|סלט ביצים|זיתים|חמוצים|מלפפונים בחומץ|פסטרמה|נקניק|סלמי|הודו פרוס|חזה הודו מעושן|גבינה במשקל|דג מלוח|הרינג|גפילטע פיש|כבד קצוץ|קובה|ממולאים'),
+ P('חזה עוף|שניצל|שניצל מוכן לטיגון|כרעיים|ירכיים|שוקיים|פרגיות|עוף שלם|עוף לנתחים|כנפיים|לבבות עוף|קורקבנים|כבד עוף|עוף טחון|הודו טחון|שניצל הודו|כתף הודו|שוק הודו|בשר טחון|בשר טחון מעורב|כתף בקר|צלי כתף|צלי בקר|בשר לגולאש|אסאדו|שפונדרה|אנטריקוט|סינטה|פילה בקר|צלעות|אוסובוקו|כבש|צלעות טלה|המבורגרים|קבב|נקניקיות|מרגז|קציצות|שווארמה|סלמון|טונה טרייה|דניס|לברק|אמנון|בורי|פילה מושט|פילה לוקוס|נסיכת הנילוס|קרפיון|שרימפס פרווה'),
+ P('חלב 3%|חלב 1%|חלב 3% בשקית|חלב בקרטון|חלב עמיד|חלב ללא לקטוז|חלב עיזים|חלב סויה|חלב שקדים|חלב שיבולת שועל|שוקו|קוטג׳|קוטג׳ 3%|גבינה לבנה 5%|גבינה לבנה 9%|גבינה צהובה|גבינה צהובה פרוסה|גבינה צהובה מגורדת|גבינה בולגרית|פטה|גבינת עיזים|גבינת שמנת|ריקוטה|מוצרלה|פרמזן|קממבר|לבנה|לבנה בשמן|יוגורט|יוגורט יווני|יוגורט פירות|יוגורט חלבון|משקה חלבון|משקה חלבון שוקו|משקה חלבון וניל|משקה חלבון קפה|משקה חלבון בננה|משקה חלבון תות|משקה חלבון ללא לקטוז|משקה חלבון דל שומן|שייק חלבון|מעדן חלבון|פודינג חלבון|גבינה לבנה חלבון|יופלה|מעדנים|מילקי|דני|פודינג|שמנת מתוקה|שמנת חמוצה|שמנת לבישול|חמאה|מרגרינה|ביצים L|ביצים M|ביצי חופש|לבן|אשל|גיל|רוויון|קפיר|גלידת חלב'),
+ P('אורז לבן|אורז בסמטי|אורז פרסי|אורז מלא|אורז יסמין|פסטה|ספגטי|פנה|פוזילי|לזניה|אטריות|אטריות אורז|פתיתים|קוסקוס|בורגול|קינואה|גריסים|כוסמת|עדשים כתומות|עדשים ירוקות|שעועית לבנה|שעועית אדומה|חומוס יבש|אפונה יבשה|קמח לבן|קמח מלא|קמח כוסמין|קמח תופח|קורנפלור|סולת|סוכר|סוכר חום|סוכר דק|תחליף סוכר|מלח|מלח גס|שמן קנולה|שמן סויה|שמן חמניות|שמן זית|תרסיס שמן|חומץ|חומץ בלסמי|מיץ לימון|רסק עגבניות|עגבניות מרוסקות|רוטב עגבניות|רוטב פסטה|קטשופ|מיונז|חרדל|רוטב ברביקיו|רוטב סויה|רוטב צ׳ילי מתוק|טחינה גולמית|טונה בקופסה|סרדינים|תירס בקופסה|אפונה בקופסה|שעועית בקופסה|חומוס בקופסה|זיתים בקופסה|מלפפון חמוץ בצנצנת|פטריות בקופסה|אננס בקופסה|שקדי מרק|אבקת מרק עוף|אבקת מרק בצל|מרק מוכן|נודלס|פירה מוכן|פפריקה|כמון|כורכום|פלפל שחור|קינמון|אורגנו|בהרט|חוואייג׳|זעתר|סומק|ציפורן|הל|אגוז מוסקט|עלי דפנה|אבקת שום|אבקת אפייה|סודה לשתייה|שמרים|תמצית וניל|סוכר וניל|קקאו|שוקולד מריר לבישול|פירורי לחם|פנקו|קמח מצה|שקדים טחונים|קוקוס טחון|צימוקים|פירות יבשים|סילאן|דבש תמרים|ג׳לי'),
+ P('קורנפלקס|כריות|דגני בוקר|דגני בוקר מלאים|שיבולת שועל|גרנולה|מוזלי|קפה נמס|קפה טורקי|קפה טחון|פולי קפה|קפסולות קפה|נס קפה מגורען|תה|תה ירוק|תה צמחים|קפה נטול|ריבה|ריבת חלב|דבש|ממרח שוקולד|חמאת בוטנים|חלבה|טחינה מתוקה|פריכיות אורז|פריכיות תירס|קרקרים|קרקר מצה|לחם קל|ביסקוויטים'),
+ P('במבה|ביסלי|תפוצ׳יפס|דוריטוס|אפרופו|צ׳יטוס|בייגלה|בייגלה שטוח|פופקורן|גרעינים|גרעיני חמניה|פיסטוקים|אגוזי מלך|קשיו|שקדים|בוטנים|תערובת אגוזים|שוקולד|שוקולד מריר|שוקולד חלב|ופלים|קרמבו|סוכריות|גומי|מסטיק|חטיפי דגנים|חטיפי חלבון|ופל חלבון|עוגיית חלבון|עוגיות שוקולד צ׳יפס|חטיף שוקולד'),
+ P('מים מינרליים|בקבוק מים גדול|מים בגלון|סודה|מים בטעמים|מיץ תפוזים|מיץ תפוחים|מיץ ענבים|מיץ ענבים לקידוש|נקטר|תרכיז|קולה|קולה זירו|ספרייט|פאנטה|שוופס|תה קר|משקה אנרגיה|משקה איזוטוני|משקה חלבון צמחי|משקה חלבון בבקבוק|מי חלבון|בירה|בירה ללא אלכוהול|יין אדום|יין לבן|ערק|וודקה|וויסקי'),
+ P('ירקות קפואים|אפונה קפואה|שעועית ירוקה קפואה|תירס קפוא|ברוקולי קפוא|תרד קפוא|במיה קפואה|פירות קפואים|צ׳יפס קפוא|פיצה קפואה|בורקס קפוא|מלאווח|ג׳חנון|בצק עלים|בצק פילו|שניצל תירס|נאגטס|שניצלונים|קובה קפוא|פילה דג קפוא|עוף קפוא|בשר טחון קפוא|המבורגר קפוא|גלידה|שלגונים|קרטיבים|קרח'),
+ P('נייר טואלט|מגבות נייר|מפיות|נוזל כלים|טבליות למדיח|ג׳ל למדיח|מלח למדיח|מבריק למדיח|אבקת כביסה|ג׳ל כביסה|קפסולות כביסה|מרכך כביסה|מסיר כתמים|אקונומיקה|נוזל רצפות|תרסיס לניקוי|מסיר שומנים|מסיר אבנית|ניקוי חלונות|ספוגים|סקוטשים|מטליות|מגבונים לניקוי|שקיות זבל|שקיות אוכל|נייר אלומיניום|ניילון נצמד|נייר אפייה|תבניות אלומיניום|כלים חד פעמיים|כוסות חד פעמיות|סוללות|נורות|נרות שבת|נרות נשמה|גפרורים|מטהר אוויר|קוטל חרקים'),
+ P('שמפו|מרכך שיער|סבון גוף|סבון ידיים|תחליב גוף|משחת שיניים|מברשות שיניים|חוט דנטלי|מי פה|דאודורנט|סכיני גילוח|קצף גילוח|קרם הגנה|קרם ידיים|צמר גפן|מקלוני אוזניים|תחבושות היגייניות|טמפונים|פלסטרים|אקמול|נורופן|ויטמינים|אבקת חלבון|אבקת חלבון מי גבינה|אבקת חלבון צמחי|קריאטין|ממחטות|מגבוני פנים'),
+ P('חיתולים|חיתולי מכנסון|מגבונים|מטרנה|סימילאק|דייסה לתינוק|מחית פירות|מחית ירקות|קרם החתלה|שמפו תינוקות|בקבוק לתינוק|מוצץ'),
+ P('אוכל יבש לכלבים|אוכל רטוב לכלבים|אוכל יבש לחתולים|אוכל רטוב לחתולים|חול לחתולים|חטיפים לכלב|שקיות לצואת כלבים')
+];
+const CHAINS=[['רמי לוי',1667.53],['אושר עד',1667.53*3151.83/3127.49,1],['נטו חסכון',1667.53*3157.17/3127.49,1],['יוחננוף',1729.20],['קרפור היפר',1743.70],['מחסני השוק',1797.21],['סלאח דבאח',1868.41],['ויקטורי',1875.18],['קשת טעמים',1955.53],['יוניברס',1987.87],['שופרסל דיל',2038.18],['טיב טעם',2243.04]];
+const OTHER=['שופרסל שלי','יש חסד','חצי חינם','קרפור מרקט','קינג סטור','סופר שכונתי','רשת אחרת'];
+const SB_URL='https://iqspnyespxskqrznpvcz.supabase.co',SB_KEY='sb_publishable_XZF0tC5GMduD2LHvZ70D5g_9eUZs9vi';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>'₪'+(+v).toFixed(2);
+const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)};
+let CODE='',chan=null;
+const rpc=async(fn,args)=>{const r=await fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
+ if(!r.ok)throw new Error(await r.text());const t=await r.text();return t?JSON.parse(t):null};
+const getDoc=p=>rpc('shop_get_doc',{code:CODE,p});
+const putDoc=async(p,d)=>{await rpc('shop_put',{code:CODE,p,d});try{chan&&chan.send({type:'broadcast',event:'chg',payload:{t:Date.now()}})}catch(e){}};
+const sha=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+while(CAT.length<AISLES.length)CAT.push([]);
+const ALLN=[];const IDX={};CAT.forEach((l,i)=>l.forEach(n=>{IDX[n]=i;ALLN.push(n)}));
+const CHN=CHAINS.map(c=>c[0]).concat(OTHER);
+
+async function login(code,pass){
+ const ok=await rpc('shop_admin_check',{code,pass});if(!ok)return false;
+ CODE=code;try{sessionStorage.setItem('tg-adm',JSON.stringify({code,pass}))}catch(e){}
+ try{if(window.supabase){const sb=window.supabase.createClient(SB_URL,SB_KEY);chan=sb.channel('shop-'+await sha('shop:'+code.toLowerCase().trim()));chan.subscribe()}}catch(e){}
+ $('login').hidden=true;$('app').hidden=false;init();return true}
+$('lform').addEventListener('submit',async e=>{e.preventDefault();$('lerr').textContent='';
+ try{if(!await login($('lcode').value.trim(),$('lpass').value))$('lerr').textContent='הקוד או הסיסמה לא נכונים (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('lerr').textContent='אין חיבור. נסו שוב'}});
+$('logout').onclick=()=>{try{sessionStorage.removeItem('tg-adm')}catch(e){}location.reload()};
+(async()=>{try{const s=JSON.parse(sessionStorage.getItem('tg-adm'));if(s)await login(s.code,s.pass)}catch(e){}})();
+
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+ ['prices','cat','msg'].forEach(t=>$('t-'+t).hidden=t!==b.dataset.t)});
+
+/* ---------- prices ---------- */
+let PR={m:{},c:{}},CUR=null,CATD={items:[]};
+async function loadPrices(){const d=await getDoc('settings/prices');PR=d&&typeof d==='object'?d:{};PR.m=PR.m||{};PR.c=PR.c||{};plist()}
+function chain(){return $('chain').value}
+function plist(){const ch=chain();$('chn').textContent=ch;const o=PR.c[ch]||{};const ks=Object.keys(o).sort((a,b)=>a.localeCompare(b,'he'));
+ $('plist').innerHTML=ks.map(n=>{const e=o[n],sl=e.s&&e.u>Date.now();return `<tr><td>${esc(n)}</td><td>${e.p?money(e.p):'—'}</td><td>${sl?`<span class="sale">${money(e.s)}</span> <span class="mut">עד ${new Date(e.u).toLocaleDateString('he-IL')}</span>`:'—'}</td><td><button class="ghost sm" data-e="${esc(n)}">עריכה</button></td></tr>`}).join('');
+ $('pempty').textContent=ks.length?'':'עוד אין מחירים שמורים ברשת הזו.'}
+$('plist').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(b){pick(b.dataset.e);scrollTo({top:0,behavior:'smooth'})}});
+$('chain').addEventListener('change',()=>{plist();if(CUR)pick(CUR)});
+$('pq').addEventListener('input',()=>{const q=$('pq').value.trim();if(q.length<2){$('pres').hidden=true;return}
+ const names=ALLN.concat((CATD.items||[]).map(x=>x.n)).filter((n,i,a)=>a.indexOf(n)===i&&n.includes(q)).slice(0,40);
+ $('pres').innerHTML=names.map(n=>`<button type="button" data-n="${esc(n)}"><span>${esc(n)}</span><span class="mut">${esc(AISLES[IDX[n]]??'שלנו')}</span></button>`).join('')||'<div class="mut" style="padding:10px">לא נמצא. אפשר להוסיף אותו בלשונית ⭐ מוצרים</div>';
+ $('pres').hidden=false});
+$('pres').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(b){pick(b.dataset.n);$('pres').hidden=true;$('pq').value=''}});
+function pick(n){CUR=n;const e=(PR.c[chain()]||{})[n]||{};$('pedit').hidden=false;$('pname').textContent=n;
+ $('pcur').textContent=e.p||e.s?'':(PR.m[n]?`מחיר כללי שמור: ${money(PR.m[n])}`:'אין עדיין מחיר שמור ברשת הזו');
+ $('pp').value=e.p||'';const sl=e.s&&e.u>Date.now();$('ps').value=sl?e.s:'';
+ $('pu').value=new Date(sl?e.u:Date.now()+6*864e5).toISOString().slice(0,10)}
+const num=x=>{const v=parseFloat(String(x).replace(',','.'));return v>0&&v<10000?Math.round(v*100)/100:0};
+$('psave').onclick=async()=>{if(!CUR)return;const p=num($('pp').value),s=num($('ps').value);
+ if(!p&&!s){toast('הקלידו מחיר');return}
+ let u=0;if(s){u=new Date($('pu').value+'T23:59:59').getTime();if(!(u>Date.now())){toast('תאריך סיום המבצע צריך להיות בעתיד');return}}
+ try{await loadPrices();const ch=chain();PR.c[ch]=PR.c[ch]||{};const o={};if(p)o.p=p;if(s){o.s=s;o.u=u}PR.c[ch][CUR]=o;
+  await putDoc('settings/prices',PR);plist();toast(`נשמר: ${CUR} ב${ch}`)}catch(e){toast('השמירה נכשלה')}};
+$('pclear').onclick=async()=>{if(!CUR)return;try{await loadPrices();const ch=chain();if(PR.c[ch])delete PR.c[ch][CUR];await putDoc('settings/prices',PR);plist();pick(CUR);toast('המחיר נמחק')}catch(e){toast('המחיקה נכשלה')}};
+
+/* ---------- catalog ---------- */
+async function loadCat(){const d=await getDoc('settings/catalog');CATD=d&&Array.isArray(d.items)?d:{items:[]};clist()}
+const aisleOpts=sel=>AISLES.map((a,i)=>`<option value="${i}"${i===sel?' selected':''}>${esc(a)}</option>`).join('');
+function clist(){const it=CATD.items;
+ $('clist').innerHTML=it.map((x,i)=>`<tr><td><input value="${esc(x.n)}" data-i="${i}" class="cn" maxlength="40" style="min-height:38px"></td><td><select data-i="${i}" class="cc" style="min-height:38px">${aisleOpts(x.c)}</select></td><td><button class="ghost sm" data-del="${i}">🗑️</button></td></tr>`).join('');
+ $('cempty').textContent=it.length?'אפשר לשנות שם או מחלקה, והשינוי נשמר מיד.':'עוד לא נוספו מוצרים.'}
+async function saveCat(msg){try{await putDoc('settings/catalog',{items:CATD.items});clist();toast(msg)}catch(e){toast('השמירה נכשלה');loadCat()}}
+$('clist').addEventListener('change',e=>{const i=+e.target.dataset.i;if(isNaN(i))return;
+ if(e.target.classList.contains('cn')){const v=e.target.value.trim().replace(/\s+/g,' ').slice(0,40);if(v.length<2){toast('שם קצר מדי');clist();return}
+  if(IDX[v]!=null||CATD.items.some((x,j)=>j!==i&&x.n===v)){toast('השם כבר קיים בקטלוג');clist();return}CATD.items[i].n=v;saveCat('השם עודכן')}
+ else{CATD.items[i].c=+e.target.value;saveCat('המחלקה עודכנה')}});
+$('clist').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;
+ if(!b.dataset.arm){b.dataset.arm=1;b.textContent='למחוק?';return}const n=CATD.items[+b.dataset.del].n;CATD.items.splice(+b.dataset.del,1);saveCat(`${n} נמחק`)});
+$('nadd').onclick=async()=>{const n=$('nn').value.trim().replace(/\s+/g,' ').slice(0,40);if(n.length<2){toast('הקלידו שם');return}
+ await loadCat();if(IDX[n]!=null||CATD.items.some(x=>x.n===n)){toast('כבר קיים בקטלוג');return}
+ CATD.items.push({n,c:+$('nc').value});$('nn').value='';saveCat(`⭐ ${n} נוסף`)};
+
+/* ---------- message ---------- */
+async function loadMsg(){const d=await getDoc('settings/announce');if(d&&d.t&&d.body){$('mlast').hidden=false;
+ $('mlastb').innerHTML=`<b>${esc(d.title||'')}</b><div style="white-space:pre-wrap">${esc(d.body)}</div><div class="mut">${new Date(d.t).toLocaleString('he-IL')}</div>`}else $('mlast').hidden=true}
+$('msend').onclick=async()=>{const title=$('mt').value.trim()||'הודעה',body=$('mb').value.trim();if(!body){toast('כתבו תוכן להודעה');return}
+ try{await putDoc('settings/announce',{t:Date.now(),title,body});
+  if($('mpush').checked)await fetch(SB_URL+'/functions/v1/shop-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:CODE,from:'admin',title:'📢 '+title,body,tag:'announce'})});
+  $('mt').value='';$('mb').value='';loadMsg();toast('ההודעה נשלחה לכולם')}catch(e){toast('השליחה נכשלה')}};
+$('mdel').onclick=async()=>{try{await putDoc('settings/announce',{t:0});loadMsg();toast('הבאנר הוסר')}catch(e){toast('נכשל')}};
+
+/* theme */
+let TH='light';try{TH=localStorage.getItem('tg-adm-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}
+function theme(t){TH=t;document.documentElement.dataset.theme=t;$('theme').textContent=t==='dark'?'☀️ בהיר':'🌙 כהה';try{localStorage.setItem('tg-adm-theme',t)}catch(e){}}
+$('theme').onclick=()=>theme(TH==='dark'?'light':'dark');theme(TH);
+function init(){$('chain').innerHTML=CHN.map(c=>`<option>${esc(c)}</option>`).join('');$('nc').innerHTML=aisleOpts(AISLES.length-1);
+ loadPrices().catch(()=>toast('טעינת המחירים נכשלה'));loadCat().catch(()=>{});loadMsg().catch(()=>{})}
+</script></body></html>
