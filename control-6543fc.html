@@ -73,8 +73,7 @@ function draw(){
   const p=f.presence,inStore=p&&p.on&&now-p.t<3*3600e3,who=inStore?(f.members||[]).find(m=>m.id===p.by):null;
   const ms=(f.members||[]).filter(isOn).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
    return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot on"></span>מחובר/ת</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
-  return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}
-   <div class="mut" style="margin-top:6px">נוצרה ${f.created?new Date(f.created).toLocaleDateString('he-IL'):'—'} · פעילות אחרונה ${ago(f.last)}</div></div>
+  return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}</div>
    <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}</div></div>
    <div class="members">${ms}</div>
    <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut" style="text-align:center;padding:30px">😴 אף אחד לא מחובר כרגע</div>'}
