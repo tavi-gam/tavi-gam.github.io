@@ -46,8 +46,9 @@ th{font-size:13px;color:var(--mut);font-weight:600}
 </div>
 
 <div id="app" hidden>
- <div class="row" style="justify-content:space-between"><div><h1>⚙️ ניהול · תביא גם</h1><div class="mut">שינויים כאן מופיעים אצל כל בני המשפחה</div></div>
+ <div class="row" style="justify-content:space-between"><div><h1>⚙️ ניהול · תביא גם</h1><div class="mut" id="famcode"></div><div class="mut">שינויים כאן מופיעים אצל כל בני המשפחה</div></div>
   <div style="flex:0 0 auto;display:flex;gap:6px;align-items:center"><button class="ghost sm" id="theme" aria-label="מצב כהה או בהיר">🌙 כהה</button>
+  <a href="control-6543fc.html" class="ghost sm" style="display:inline-flex;align-items:center;min-height:36px;padding:0 10px;border:2px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;font-weight:600;font-size:14px">🔐 לוח שליטה</a>
   <button class="ghost sm" id="logout">יציאה</button></div></div>
  <div class="tabs" role="tablist">
   <button role="tab" data-t="prices" aria-selected="true">💰 מחירים</button>
@@ -135,11 +136,13 @@ async function login(code,pass){
  const ok=await rpc('shop_admin_check',{code,pass});if(!ok)return false;
  CODE=code;try{sessionStorage.setItem('tg-adm',JSON.stringify({code,pass}))}catch(e){}
  try{if(window.supabase){const sb=window.supabase.createClient(SB_URL,SB_KEY);chan=sb.channel('shop-'+await sha('shop:'+code.toLowerCase().trim()));chan.subscribe()}}catch(e){}
- $('login').hidden=true;$('app').hidden=false;init();return true}
+ $('login').hidden=true;$('app').hidden=false;$('famcode').textContent='משפחה: '+code;init();return true}
 $('lform').addEventListener('submit',async e=>{e.preventDefault();$('lerr').textContent='';
  try{if(!await login($('lcode').value.trim(),$('lpass').value))$('lerr').textContent='הקוד או הסיסמה לא נכונים (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('lerr').textContent='אין חיבור. נסו שוב'}});
 $('logout').onclick=()=>{try{sessionStorage.removeItem('tg-adm')}catch(e){}location.reload()};
-(async()=>{try{const s=JSON.parse(sessionStorage.getItem('tg-adm'));if(s)await login(s.code,s.pass)}catch(e){}})();
+(async()=>{try{const qc=new URLSearchParams(location.search).get('code'),sup=sessionStorage.getItem('tg-sup');
+ if(qc&&sup){history.replaceState(null,'',location.pathname);if(await login(qc,sup))return}
+ const s=JSON.parse(sessionStorage.getItem('tg-adm'));if(s)await login(s.code,s.pass)}catch(e){}})();
 
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));

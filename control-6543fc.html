@@ -41,7 +41,7 @@ input.q{max-width:280px}
 <div id="app" hidden>
  <div class="top">
   <div><h1>🛒 תביא גם · לוח שליטה</h1><div class="mut" id="upd"></div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><a class="ghost" href="nihul-40b5b0.html" style="display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:2px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;font-weight:600">⚙️ דף מנהל</a><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
  </div>
  <div class="stats" id="stats"></div>
  <div id="fams"></div>
@@ -74,7 +74,7 @@ function draw(){
   const ms=(f.members||[]).filter(isOn).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
    return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot on"></span>מחובר/ת</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
   return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}</div>
-   <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}</div></div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}${f.code?`<a class="pill" style="background:var(--acc);color:#fff;text-decoration:none" href="nihul-40b5b0.html?code=${encodeURIComponent(f.code)}">⚙️ לניהול המשפחה</a>`:''}</div></div>
    <div class="members">${ms}</div>
    <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut" style="text-align:center;padding:30px">😴 אף אחד לא מחובר כרגע</div>'}
 $('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
