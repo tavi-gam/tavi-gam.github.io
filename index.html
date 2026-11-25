@@ -332,7 +332,8 @@ const user={id:async()=>cfg.uid,isOwner:async()=>false,canEdit:async()=>true,can
 
 /* ---- start after joining ---- */
 /* ---- trial / subscription ---- */
-async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.code})}catch(e){return}
+async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.code})}catch(e){if(window.__billState===undefined)window.__billState=null;return}
+ window.__billState=b?b.state:null;
  let pw=document.getElementById('paywall'),tb=document.getElementById('trialbar');
  if(!b||b.state==='paid'){pw&&pw.remove();tb&&tb.remove();return}
  const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1335,23 +1336,25 @@ render();status('מתחבר לרשימה המשותפת…');
 {
  const K='shop-onb-v3',$=id=>document.getElementById(id);
  const P=[
-  ['🎬','סרטון קצר: איך זה עובד',[],1],
+  ['🎬','סרטון קצר: איך זה עובד',[],'guide.mp4'],
   ['🛒','מוסיפים לרשימה בלחיצה',['בוחרים מחלקה בקטלוג ולוחצים על תמונה. המוצר נכנס לרשימה','לחיצה נוספת מוסיפה עוד יחידה','לחיצה ארוכה על מוצר מעדכנת את המחיר או מסמנת מבצע','חסר מוצר? מחפשים אותו ולוחצים ➕ "הוספה לקטלוג"']],
   ['👨‍👩‍👧','רשימה אחת לכל המשפחה',['כל מה שמוסיפים או מסמנים, כולם רואים מיד','בסופר לוחצים "🛒 נכנסתי לסופר", ובסוף "✅ יצאתי מהסופר"','מחליקים על מוצר ימינה כדי לסמן שנקנה','למעלה רואים כמה הקנייה תעלה']],
   ['🔔','עוד כמה דברים קטנים',['לוחצים על 🔔 כדי לקבל התראה כשמוסיפים מוצר או כשמישהו בסופר','מוסיפים את האפליקציה למסך הבית, וזה כמו אפליקציה רגילה','כפתור ♿ משנה גודל טקסט, מצב כהה ובהירות','מתכונים: לחיצה אחת וכל המצרכים ברשימה']]
  ];
- let i=0;
- function show(){const[ic,t,b,vid]=P[i];const v=$('onbV');v.style.display=vid?'block':'none';$('onbSnd').style.display=vid&&v.muted?'block':'none';$('onbI').style.display=vid?'none':'';if(vid){try{v.currentTime=0;v.muted=false;v.play().then(()=>{$('onbSnd').style.display='none'}).catch(()=>{v.muted=true;$('onbSnd').style.display='block';v.play().catch(()=>{})})}catch(e){}}else{try{v.pause()}catch(e){}}$('onbI').textContent=ic;$('onbT').textContent=t;
+ const TP=['💳','תקופת ניסיון ומנוי',[],'trial.mp4'],TK='shop-onb-trial-v1',ALL=P.slice();let i=0;
+ const needTrial=()=>window.__billState&&window.__billState!=='paid';
+ function show(){const[ic,t,b,vid]=P[i];const v=$('onbV');if(vid&&!v.src.endsWith(vid))v.src=vid;v.style.display=vid?'block':'none';$('onbSnd').style.display=vid&&v.muted?'block':'none';$('onbI').style.display=vid?'none':'';if(vid){try{v.currentTime=0;v.muted=false;v.play().then(()=>{$('onbSnd').style.display='none'}).catch(()=>{v.muted=true;$('onbSnd').style.display='block';v.play().catch(()=>{})})}catch(e){}}else{try{v.pause()}catch(e){}}$('onbI').textContent=ic;$('onbT').textContent=t;
   $('onbB').innerHTML=b.map(x=>'<li>'+x.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</li>').join('');
-  [...$('onbD').children].forEach((d,k)=>d.className=k===i?'on':'');$('onbN').textContent=i===P.length-1?'יאללה, מתחילים':'הבא';$('onbS').hidden=i===P.length-1}
- function done(){try{localStorage.setItem(K,'1')}catch(e){}try{$('onbV').pause()}catch(e){}$('onb').hidden=true}
- window.openGuide=()=>{i=0;show();$('onb').hidden=false;setTimeout(()=>$('onbN').focus(),30)};
+  $('onbD').innerHTML=P.map(()=>'<i></i>').join('');[...$('onbD').children].forEach((d,k)=>d.className=k===i?'on':'');$('onbN').textContent=i===P.length-1?'יאללה, מתחילים':'הבא';$('onbS').hidden=i===P.length-1}
+ function done(){try{localStorage.setItem(K,'1');if(P.includes(TP))localStorage.setItem(TK,'1')}catch(e){}try{$('onbV').pause()}catch(e){}$('onb').hidden=true}
+ window.openGuide=only=>{P.length=0;if(only==='trial')P.push(TP);else{P.push(...ALL);if(needTrial())P.splice(1,0,TP)}i=0;show();$('onb').hidden=false;setTimeout(()=>$('onbN').focus(),30)};
  $('onbN').addEventListener('click',()=>{if(i<P.length-1){i++;show()}else done()});
  $('onbS').addEventListener('click',done);
  $('onbSnd').addEventListener('click',()=>{const v=$('onbV');v.muted=false;v.currentTime=0;v.play().catch(()=>{});$('onbSnd').style.display='none'});
  $('onbV').addEventListener('volumechange',()=>{if(!$('onbV').muted)$('onbSnd').style.display='none'});
  let seen=false;try{seen=!!localStorage.getItem(K)}catch(e){}
- if(!seen){const t=setInterval(()=>{const g=document.querySelector('.gate');if(g&&g.isConnected&&getComputedStyle(g).display!=='none')return;let has=false;try{has=!!(JSON.parse(localStorage.getItem('shop-standalone-v1'))||{}).code}catch(e){}if(!has)return;clearInterval(t);setTimeout(openGuide,600)},500)}
+ if(!seen){let w=0;const t=setInterval(()=>{if(window.__billState===undefined&&++w<10)return;const g=document.querySelector('.gate');if(g&&g.isConnected&&getComputedStyle(g).display!=='none')return;let has=false;try{has=!!(JSON.parse(localStorage.getItem('shop-standalone-v1'))||{}).code}catch(e){}if(!has)return;clearInterval(t);setTimeout(openGuide,600)},500)}
+ else{let n=0;const t2=setInterval(()=>{if(++n>40){clearInterval(t2);return}if(window.__billState===undefined)return;clearInterval(t2);let ts=false;try{ts=!!localStorage.getItem(TK)}catch(e){}if(needTrial()&&!ts)setTimeout(()=>openGuide('trial'),800)},500)}
 }
 </script>
 <!-- ---------- accessibility menu ---------- -->
