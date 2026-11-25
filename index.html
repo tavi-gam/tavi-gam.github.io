@@ -75,7 +75,7 @@ h3{font-size:17px;margin:0 0 8px}
 .shophead{position:sticky;top:0;background:var(--ink);color:var(--paper);display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px max(5vw,16px);z-index:1}
 .shophead b{display:block;font-size:22px}.shophead span{font-size:14px;opacity:.85}
 .shophead button{background:var(--ok);color:#fff;border:0;padding:0 18px;font-size:17px;font-weight:700;min-height:48px}
-.pres{display:flex;gap:12px;align-items:center;background:light-dark(#e6f4ea,#173324);border:2px solid var(--ok);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.pres[hidden]{display:none!important}.pres{display:flex;gap:12px;align-items:center;background:light-dark(#e6f4ea,#173324);border:2px solid var(--ok);border-radius:14px;padding:12px 14px;margin:0 0 14px}
 .pres.left{border-color:var(--line);background:light-dark(#f1f1ee,#22262a)}.pres.left .dot{background:var(--mute);animation:none}.pres[hidden]{display:none}.pres b{display:block;font-size:17px}.pres div{flex:1;min-width:0}.pres div span{display:block;font-size:14px;color:var(--mute)}
 .pres .dot{width:14px;height:14px;border-radius:50%;background:var(--ok);flex:none;animation:pulse 1.6s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,125,79,.55)}70%{box-shadow:0 0 0 12px rgba(47,125,79,0)}100%{box-shadow:0 0 0 0 rgba(47,125,79,0)}}
@@ -280,7 +280,7 @@ function watch(p,d){
   if(!old||old.d||(d.bump||0)!==(old.bump||0)){pend.push(d.q>1?d.n+' ×'+d.q:d.n);clearTimeout(pendT);pendT=setTimeout(flush,2500)}}
  if(p==='presence/shop'&&d.by===cfg.uid&&d.on&&!(cache[p]&&cache[p].on&&cache[p].by===cfg.uid))
   sendPush(`🛒 ${cfg.name} בסופר עכשיו`,'מה שתוסיפו לרשימה יקפוץ אצלו מיד','store');
- if(p==='presence/shop'&&d.by===cfg.uid&&d.on===false&&cache[p]&&cache[p].on&&cache[p].by===cfg.uid){
+ if(p==='presence/shop'&&d.by===cfg.uid&&d.on===false&&!d.quiet&&cache[p]&&cache[p].on&&cache[p].by===cfg.uid){
   const its=Object.keys(cache).filter(k=>k.startsWith('items/')).map(k=>cache[k]);
   const got=its.filter(x=>x&&x.d&&x.by===cfg.uid).length,left=its.filter(x=>x&&!x.d).length;
   sendPush(`✅ ${cfg.name} יצא/ה מהסופר`,(got?`סימן/ה ${got} מוצרים כנקנו`:'הקנייה הסתיימה')+(left?` · נשארו ${left} ברשימה`:' · הרשימה ריקה'),'store');
@@ -288,6 +288,7 @@ function watch(p,d){
 }
 function flush(){const names=[...new Set(pend)];pend=[];if(!names.length)return;
  sendPush(`${cfg.name} הוסיף/ה לרשימה`,names.slice(0,8).join(', ')+(names.length>8?` ועוד ${names.length-8}`:''),'add')}
+window.__beacon=(p,d)=>{try{cache[p]=d;persist();fetch(SB_URL+'/rest/v1/rpc/shop_put',{method:'POST',keepalive:true,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({code:cfg.code,p,d})}).catch(()=>{})}catch(e){}};
 function sendPush(title,body,tag){fetch(FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:cfg.code,from:cfg.uid,title,body,tag}),keepalive:true}).catch(()=>{})}
 const b64u=s=>{const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)))};
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -981,16 +982,21 @@ function routeScore(x){const R=ROUTES[routeKey()];const dflt=x.c/AISLES.length;i
  const a=R.a[x.c]?R.a[x.c][0]:dflt,i=R.i[x.n]?R.i[x.n][0]:a;return[a,i]}
 $('shopRoute').addEventListener('click',()=>{const v=prompt('באיזה סניף של '+CHAIN+' אתם קונים? (למשל: תלפיות)\nכל סניף לומד מסלול משלו',BRANCH);if(v===null)return;
  BRANCH=v.trim().slice(0,30);try{localStorage.setItem('shop-branch',BRANCH)}catch(e){}shopRender()});
-const PRES_TTL=3*3600*1000;
-function setPresence(on){if(DB&&!READONLY&&ME){DB.doc('presence/shop').set(on?{by:ME,t:Date.now(),on:true}:{by:ME,t:Date.now(),on:false}).catch(()=>{})}}
+const PRES_TTL=10*60*1000;
+function setPresence(on,quiet){if(DB&&!READONLY&&ME){DB.doc('presence/shop').set(on?{by:ME,t:Date.now(),on:true}:{by:ME,t:Date.now(),on:false,quiet:!!quiet}).catch(()=>{})}}
+setInterval(()=>{if(SHOP&&document.visibilityState==='visible')setPresence(true)},3*60*1000);
+document.addEventListener('visibilitychange',()=>{if(SHOP&&document.visibilityState==='visible')setPresence(true)});
+addEventListener('pagehide',()=>{if(SHOP&&ME){const d={by:ME,t:Date.now(),on:false,quiet:true};if(window.__beacon)window.__beacon('presence/shop',d);else setPresence(false,true)}});
+setInterval(()=>{if(PRES_READY)presBanner()},60*1000);window.__presDbg=()=>JSON.stringify(PRES);
 const LEFT_TTL=2*3600*1000;let presSeen=null,PRES_READY=false;
 async function presBanner(){
  const el=$('pres');const p=PRES;
  const ago=t=>{const m=Math.max(1,Math.round((Date.now()-t)/60000));return m<60?m+' דק׳':Math.round(m/60)+' שע׳'};
  if(PRES_READY&&presSeen===null)presSeen=p?p.by+':'+p.on+':'+p.t:'none';
- if(!p||p.by===ME||SHOP||(p.on&&Date.now()-p.t>PRES_TTL)||(!p.on&&Date.now()-p.t>LEFT_TTL)){el.hidden=true;return}
+ if(!p||p.by===ME||SHOP||p.quiet||(p.on&&Date.now()-p.t>PRES_TTL)||(!p.on&&Date.now()-p.t>LEFT_TTL)){el.hidden=true;if(p&&p.quiet)presSeen=p.by+':'+p.on+':'+p.t;return}
  let nm='';try{if(USER&&USER.profiles){const ps=await USER.profiles([p.by]);nm=(ps[p.by]&&ps[p.by].name)||''}}catch(e){}
  nm=nm||'מישהו מהבית';
+ if(p!==PRES)return;
  const key=p.by+':'+p.on+':'+p.t;
  if(presSeen&&presSeen!==key&&Date.now()-p.t<5*60000)toast(p.on?`🛒 ${nm} נכנס/ה לסופר`:`✅ ${nm} יצא/ה מהסופר`);
  presSeen=key;
@@ -1263,7 +1269,7 @@ render();status('מתחבר לרשימה המשותפת…');
   o[k]={a,i,s:Math.max(0,+R.s||0)}}ROUTES=o;if(SHOP)shopRender()},()=>{});
  db.doc('settings/barcodes').onSnapshot(d=>{const v=d.exists?d.data():null;const m={};if(v&&v.m&&typeof v.m==='object')for(const[k,n]of Object.entries(v.m)){if(/^\d{6,20}$/.test(k)&&typeof n==='string')m[k]=n.slice(0,60)}BC=m},()=>{});
  db.doc('settings/catalog').onSnapshot(d=>{const v=d.exists?d.data():null;applyCat(cleanCat(v&&v.items));saveLocal();render();grid()},()=>{});
- db.doc('presence/shop').onSnapshot(d=>{const v=d.exists?d.data():null;PRES=v&&typeof v.by==='string'?{by:v.by,t:+v.t||0,on:!!v.on}:null;PRES_READY=true;presBanner()},()=>{});
+ db.doc('presence/shop').onSnapshot(d=>{const v=d.exists?d.data():null;PRES=v&&typeof v.by==='string'?{by:v.by,t:+v.t||0,on:!!v.on,quiet:!!v.quiet}:null;if(!PRES_READY&&PRES&&PRES.by===ME&&PRES.on&&!SHOP)setPresence(false,true);PRES_READY=true;presBanner()},()=>{});
  db.collection('history').orderBy('t','desc').limit(60).onSnapshot(sn=>{HIST=sn.docs.map(d=>{const v=d.data()||{};return{id:d.id,t:+v.t||0,total:+v.total||0,count:+v.count||0,chain:typeof v.chain==='string'?v.chain.slice(0,30):'',items:Array.isArray(v.items)?v.items.filter(i=>i&&typeof i.n==='string').slice(0,150).map(i=>({n:i.n.slice(0,60),q:Math.max(1,Math.min(99,+i.q||1)),p:+i.p>0?+i.p:0})):[]}});if(VIEW==='hist')hist()},()=>{});
  saveLocal();
 })();
