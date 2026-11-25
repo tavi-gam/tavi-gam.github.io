@@ -1099,7 +1099,7 @@ async function adders(){
  if(!USER||!USER.profiles)return;
  const avs=[...document.querySelectorAll('.av[data-uid]')];
  if(avs.length){try{const ps=await USER.profiles([...new Set(avs.map(e=>e.dataset.uid))]);avs.forEach(e=>{const p=ps[e.dataset.uid];if(!p)return;PROF[e.dataset.uid]=p;
-  const nm=(p.name||'').trim();e.textContent=p.emo||(nm?nm[0]:'?');e.style.background=p.emo?'var(--acc2)':avColor(e.dataset.uid);e.title=p.isMe?'אני':nm;e.setAttribute('aria-label','ביקש/ה: '+(p.isMe?'אני':nm||'מישהו מהבית'))})}catch(e){}}
+  const nm=(p.name||'').trim();e.textContent=p.emo||(nm?[...nm.replace(/\s+/g,'')].slice(0,2).join(''):'?');e.style.fontSize=p.emo?'':'12px';e.style.background=p.emo?'var(--acc2)':avColor(e.dataset.uid);e.title=p.isMe?'אני':nm;e.setAttribute('aria-label','ביקש/ה: '+(p.isMe?'אני':nm||'מישהו מהבית'))})}catch(e){}}
  const els=[...document.querySelectorAll('.adder[data-uid]')];if(!els.length)return;
  try{const ps=await USER.profiles([...new Set(els.map(e=>e.dataset.uid))]);els.forEach(e=>{const p=ps[e.dataset.uid];if(!p)return;e.textContent=p.isMe?'ביקשתי אני':'ביקש/ה: '+(p.name||'מישהו מהבית')})}catch(e){}
 }
