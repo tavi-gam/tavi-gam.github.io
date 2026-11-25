@@ -50,7 +50,7 @@ button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:
  <div class="card" id="renew" hidden style="border:2px solid #c27a00"></div>
  <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button></div>
  <div class="card" id="setCard" hidden><h2>💳 מה המשפחות רואות כשהניסיון נגמר</h2>
-  <label class="mut">מחיר</label><input id="sPrice" maxlength="60">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="mut">מחיר חודשי</label><input id="sPrice" maxlength="60"></div><div><label class="mut">מחיר שנתי</label><input id="sYear" maxlength="60"></div></div>
   <label class="mut" style="display:block;margin-top:10px">הסבר איך משלמים (מספר ביט / פייבוקס וכו׳)</label><textarea id="sPay" maxlength="600" style="width:100%;min-height:90px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--bg);color:inherit;font:inherit"></textarea>
   <button id="sSave" style="margin-top:10px">שמירה</button></div>
  <div id="fams"></div>
@@ -105,8 +105,8 @@ const onBill=async e=>{const x=e.target.closest('[data-fid]');if(!x)return;
 $('fams').addEventListener('click',onBill);$('renew').addEventListener('click',onBill);
 const mode=m=>{MODE=m;$('fOn').setAttribute('aria-pressed',m==='on');$('fAll').setAttribute('aria-pressed',m==='all');DATA&&draw()};
 $('fOn').onclick=()=>mode('on');$('fAll').onclick=()=>mode('all');
-$('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DATA){$('sPrice').value=DATA.price||'';$('sPay').value=DATA.payinfo||''}};
-$('sSave').onclick=async()=>{try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_pub',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,price:$('sPrice').value.trim(),payinfo:$('sPay').value.trim()})});
+$('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DATA){$('sPrice').value=DATA.price||'';$('sYear').value=DATA.price_year||'';$('sPay').value=DATA.payinfo||''}};
+$('sSave').onclick=async()=>{try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_pub',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,price:$('sPrice').value.trim(),price_year:$('sYear').value.trim(),payinfo:$('sPay').value.trim()})});
  if(await r.json()){toast('נשמר');$('setCard').hidden=true;load()}else toast('נכשל')}catch(e){toast('אין חיבור')}};
 $('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
  try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
