@@ -47,6 +47,7 @@ button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:
   <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><a class="ghost" href="nihul-40b5b0.html" style="display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:2px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;font-weight:600">⚙️ דף מנהל</a><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
  </div>
  <div class="stats" id="stats"></div>
+ <div class="card" id="renew" hidden style="border:2px solid #c27a00"></div>
  <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button></div>
  <div class="card" id="setCard" hidden><h2>💳 מה המשפחות רואות כשהניסיון נגמר</h2>
   <label class="mut">מחיר</label><input id="sPrice" maxlength="60">
@@ -75,6 +76,12 @@ function draw(){
  const active=F.filter(f=>(f.members||[]).some(isOn)).length;
  const live=F.filter(f=>f.presence&&f.presence.on&&now-f.presence.t<3*3600e3);
  $('stats').innerHTML=[['🟢','מחוברים עכשיו',mem],['👨‍👩‍👧','משפחות מחוברות',active],['🛒','בסופר עכשיו',live.length]].map(([i,t,v])=>`<div class="stat"><span class="mut">${i} ${t}</span><b>${v}</b></div>`).join('');
+ const soon=F.filter(f=>{const pu=f.paid_until?new Date(f.paid_until).getTime():0,tu=f.trial_until?new Date(f.trial_until).getTime():0;
+  if(f.state==='paid')return pu-now<7*day&&pu<4e12;if(f.state==='trial')return tu-now<3*day;return f.state==='expired'&&now-tu<30*day});
+ const rn=$('renew');rn.hidden=!soon.length;
+ if(soon.length)rn.innerHTML=`<h2>⚠️ ${soon.length===1?'משפחה אחת צריכה':soon.length+' משפחות צריכות'} לחדש</h2>`+soon.map(f=>{const nm=(f.members||[]).map(m=>m.name).filter(Boolean).slice(0,3).join(', ')||'ללא שמות';
+  const why=f.state==='paid'?`המנוי נגמר ${dd(f.paid_until)}`:f.state==='trial'?`הניסיון נגמר ${dd(f.trial_until)}`:`נעולה מאז ${dd(f.trial_until)}`;
+  return `<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0;border-top:1px dashed var(--line)"><div><b>${esc(f.code||f.id)}</b> · ${esc(nm)}<div class="mut">${why}</div></div><div style="display:flex;gap:6px"><button class="ghost" data-fid="${esc(f.fid)}" data-a="paid" data-d="30">💳 שילם · חודש</button><button class="ghost" data-fid="${esc(f.fid)}" data-a="paid" data-d="365">💳 שנה</button></div></div>`}).join('');
  $('upd').textContent='עודכן '+new Date().toLocaleTimeString('he-IL')+' · מתרענן כל 30 שניות';
  const list=F.filter(f=>MODE==='all'||(f.members||[]).some(isOn)).filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
  $('fams').innerHTML=list.map(f=>{
@@ -91,10 +98,11 @@ function bill(f){const st=f.state,pu=f.paid_until&&new Date(f.paid_until).getFul
  const pill=st==='paid'?`<span class="pill paid">✅ ${pu?'חינם לתמיד':'משלם/ת עד '+dd(f.paid_until)}</span>`:st==='trial'?`<span class="pill trial">⏳ ניסיון עד ${dd(f.trial_until)}</span>`:`<span class="pill exp">⛔ הניסיון נגמר ${dd(f.trial_until)}</span>`;
  const b=(a,d,t)=>`<button class="ghost" data-fid="${esc(f.fid)}" data-a="${a}" data-d="${d}">${t}</button>`;
  return `<div class="bill">${pill}${b('paid',30,'💳 שילם · חודש')}${b('paid',365,'💳 שנה')}${b('trial',7,'⏳ +7 ימי ניסיון')}${pu?'':b('free',0,'🎁 חינם')}${st==='expired'?'':b('stop',0,'⛔ עצירה')}</div>`}
-$('fams').addEventListener('click',async e=>{const x=e.target.closest('[data-fid]');if(!x)return;
+const onBill=async e=>{const x=e.target.closest('[data-fid]');if(!x)return;
  if(x.dataset.a==='stop'&&!x.dataset.arm){x.dataset.arm=1;x.textContent='בטוח? לחצו שוב';return}
  try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_bill',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,fid:x.dataset.fid,action:x.dataset.a,days:+x.dataset.d||0})});
-  const j=await r.json();if(!j)return toast('נכשל');toast({paid:'המנוי הוארך',trial:'הניסיון הוארך',free:'הוגדר חינם',stop:'המנוי נעצר'}[x.dataset.a]);load()}catch(err){toast('אין חיבור')}});
+  const j=await r.json();if(!j)return toast('נכשל');toast({paid:'המנוי הוארך',trial:'הניסיון הוארך',free:'הוגדר חינם',stop:'המנוי נעצר'}[x.dataset.a]);load()}catch(err){toast('אין חיבור')}};
+$('fams').addEventListener('click',onBill);$('renew').addEventListener('click',onBill);
 const mode=m=>{MODE=m;$('fOn').setAttribute('aria-pressed',m==='on');$('fAll').setAttribute('aria-pressed',m==='all');DATA&&draw()};
 $('fOn').onclick=()=>mode('on');$('fAll').onclick=()=>mode('all');
 $('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DATA){$('sPrice').value=DATA.price||'';$('sPay').value=DATA.payinfo||''}};
