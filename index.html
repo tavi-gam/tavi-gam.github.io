@@ -467,7 +467,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <div class="sheet" id="esheet" hidden><div class="sheetin rsheet" id="ebody" role="dialog" aria-modal="true" aria-label="עריכת מתכון"></div></div>
 <div class="sheet" id="rsheet" hidden><div class="sheetin rsheet" id="rbody" role="dialog" aria-modal="true"></div></div>
 <div class="shop" id="shop" hidden role="dialog" aria-modal="true" aria-label="מצב קנייה">
-  <div class="shophead"><div><b id="shopLeft"></b><span id="shopCost"></span></div><div style="display:flex;gap:8px"><button type="button" id="scanGo" style="background:#1f5fbf">📷 סריקה</button><button type="button" id="shopExit">סיום</button></div></div>
+  <div class="shophead"><div><b id="shopLeft"></b><span id="shopCost"></span><button type="button" id="shopRoute" style="display:block;background:transparent;border:0;color:inherit;opacity:.85;font-size:13px;padding:2px 0 0;min-height:0;text-align:start;text-decoration:underline dotted"></button></div><div style="display:flex;gap:8px"><button type="button" id="scanGo" style="background:#1f5fbf">📷 סריקה</button><button type="button" id="shopExit">סיום</button></div></div>
   <div class="shopnew" id="shopNew" hidden role="alert"></div>
   <div id="shopList"></div>
 </div>
@@ -960,6 +960,22 @@ function hist(){
  $('histView').querySelectorAll('.again').forEach(b=>b.addEventListener('click',()=>{const t=H[+b.dataset.i];t.items.forEach(x=>{if(!list().some(y=>y.n===x.n&&!y.d))add(x.q>1?x.q+' '+x.n:x.n)});render();toast('המוצרים נוספו לרשימה');setView('list')}));
 }
 let SHOP=false,PRES=null,KNOWN=null,FRESH=new Set();
+/* ---------- learned store route ---------- */
+let ROUTES={},SESS=[],BRANCH='';try{BRANCH=localStorage.getItem('shop-branch')||''}catch(e){}
+const routeKey=()=>(CHAIN+(BRANCH?' · '+BRANCH:'')).slice(0,60);
+function pushRoutes(){if(DB&&!READONLY)DB.doc('settings/routes').set({r:ROUTES}).catch(()=>{})}
+function sessRec(x){if(SHOP&&x)SESS.push({n:x.n,c:x.c})}
+function learnRoute(){const N=SESS.length;if(N<4){SESS=[];return}
+ const k=routeKey(),R=ROUTES[k]||{a:{},i:{},s:0};
+ const upd=(m,key,r)=>{const o=m[key]||[r,0],w=Math.min(o[1],5);m[key]=[Math.round(((o[0]*w+r)/(w+1))*1000)/1000,o[1]+1]};
+ const ac={};SESS.forEach((x,i)=>{const r=i/(N-1);upd(R.i,x.n,r);(ac[x.c]=ac[x.c]||[]).push(r)});
+ Object.entries(ac).forEach(([c,rs])=>upd(R.a,c,rs.reduce((a,b)=>a+b,0)/rs.length));
+ const ik=Object.keys(R.i);if(ik.length>400)ik.sort((a,b)=>R.i[a][1]-R.i[b][1]).slice(0,ik.length-400).forEach(n=>delete R.i[n]);
+ R.s=(R.s||0)+1;ROUTES[k]=R;const ks=Object.keys(ROUTES);if(ks.length>20)delete ROUTES[ks[0]];SESS=[];pushRoutes()}
+function routeScore(x){const R=ROUTES[routeKey()];const dflt=x.c/AISLES.length;if(!R)return[dflt,dflt];
+ const a=R.a[x.c]?R.a[x.c][0]:dflt,i=R.i[x.n]?R.i[x.n][0]:a;return[a,i]}
+$('shopRoute').addEventListener('click',()=>{const v=prompt('באיזה סניף של '+CHAIN+' אתם קונים? (למשל: תלפיות)\nכל סניף לומד מסלול משלו',BRANCH);if(v===null)return;
+ BRANCH=v.trim().slice(0,30);try{localStorage.setItem('shop-branch',BRANCH)}catch(e){}shopRender()});
 const PRES_TTL=3*3600*1000;
 function setPresence(on){if(DB&&!READONLY&&ME){DB.doc('presence/shop').set(on?{by:ME,t:Date.now(),on:true}:{by:ME,t:Date.now(),on:false}).catch(()=>{})}}
 const LEFT_TTL=2*3600*1000;let presSeen=null,PRES_READY=false;
@@ -993,8 +1009,11 @@ function shopRender(){
  const row=(x,f)=>`<button type="button" class="srow${f?' fresh':''}" data-id="${esc(x.id)}"><span class="box"></span><span class="sn">${esc(x.n)}${f?'<small>נוסף עכשיו · '+esc(AISLES[x.c])+'</small>':''}${x.add&&DB&&x.add!==ME?`<small class="adder" data-uid="${esc(x.add)}"></small>`:''}${x.note?`<small>״${esc(x.note)}״</small>`:''}</span>${x.q>1?`<span class="sq">×${x.q}</span>`:''}</button>`;
  const fr=left.filter(x=>FRESH.has(x.id));
  let h=fr.length?'<h2 class="hfresh">🔔 נוסף עכשיו</h2>'+fr.map(x=>row(x,1)).join(''):'';
- AISLES.forEach((a,ci)=>{const g=left.filter(x=>x.c===ci&&!FRESH.has(x.id)).sort((x,y)=>x.n.localeCompare(y.n,'he'));if(!g.length)return;
+ const R=ROUTES[routeKey()],learned=R&&R.s>=1;
+ const ord=AISLES.map((a,ci)=>ci).sort((p,q)=>{const d=q2=>R&&R.a[q2]?R.a[q2][0]:q2/AISLES.length;return d(p)-d(q)});
+ ord.forEach(ci=>{const a=AISLES[ci];const g=left.filter(x=>x.c===ci&&!FRESH.has(x.id)).sort((x,y)=>(routeScore(x)[1]-routeScore(y)[1])||x.n.localeCompare(y.n,'he'));if(!g.length)return;
   h+=`<h2>${a}</h2>`+g.map(x=>row(x,0)).join('');});
+ $('shopRoute').textContent=learned?`🗺️ מסודר לפי המסלול שלכם · ${routeKey()} (${R.s} קניות)`:`🗺️ לומדים את המסלול ב${routeKey()} · לחצו להגדרת סניף`;
  if(!left.length)h='<div class="sdone">🎉 סיימתם את הרשימה<br><br><button type="button" class="add" id="shopFin" style="padding:0 22px;min-height:54px">לשמור את הקנייה</button></div>';
  $('shopList').innerHTML=h;adders();
 }
@@ -1002,13 +1021,13 @@ let WL=null;
 async function wakeOn(){try{if('wakeLock' in navigator&&SHOP&&!document.hidden){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
 function wakeOff(){try{WL&&WL.release()}catch(e){}WL=null}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SHOP&&!WL)wakeOn()});
-$('shopGo').addEventListener('click',()=>{setTimeout(wakeOn,0);KNOWN=new Set(list().map(x=>x.id+':'+(x.bump||0)));FRESH=new Set();setPresence(true);SHOP=true;$('shop').hidden=false;document.body.style.overflow='hidden';shopRender()});
-$('shopExit').addEventListener('click',()=>{scanClose();wakeOff();setPresence(false);KNOWN=null;$('shopNew').hidden=true;SHOP=false;$('shop').hidden=true;document.body.style.overflow='';render()});
+$('shopGo').addEventListener('click',()=>{setTimeout(wakeOn,0);KNOWN=new Set(list().map(x=>x.id+':'+(x.bump||0)));FRESH=new Set();SESS=[];setPresence(true);SHOP=true;$('shop').hidden=false;document.body.style.overflow='hidden';shopRender()});
+$('shopExit').addEventListener('click',()=>{scanClose();learnRoute();wakeOff();setPresence(false);KNOWN=null;$('shopNew').hidden=true;SHOP=false;$('shop').hidden=true;document.body.style.overflow='';render()});
 $('shopList').addEventListener('click',e=>{
- if(e.target.id==='shopFin'){wakeOff();setPresence(false);KNOWN=null;SHOP=false;$('shop').hidden=true;document.body.style.overflow='';setView('list');$('finish').click();return}
+ if(e.target.id==='shopFin'){learnRoute();wakeOff();setPresence(false);KNOWN=null;SHOP=false;$('shop').hidden=true;document.body.style.overflow='';setView('list');$('finish').click();return}
  const b=e.target.closest('.srow');if(!b)return;const id=b.dataset.id,x=ITEMS[id];if(!x)return;
- FRESH.delete(id);b.classList.add('gone');x.d=true;x.by=ME;push(id);
- setTimeout(()=>{render();toast(`✓ ${x.n}`,()=>{if(ITEMS[id]){ITEMS[id].d=false;ITEMS[id].by='';push(id);render()}})},260)});
+ FRESH.delete(id);b.classList.add('gone');sessRec(x);x.d=true;x.by=ME;push(id);
+ setTimeout(()=>{render();toast(`✓ ${x.n}`,()=>{SESS=SESS.filter(y=>y.n!==x.n);if(ITEMS[id]){ITEMS[id].d=false;ITEMS[id].by='';push(id);render()}})},260)});
 /* ---------- barcode scanning in shop mode ---------- */
 let BC={},SCAN=null;
 function pushBC(){if(DB&&!READONLY)DB.doc('settings/barcodes').set({m:BC}).catch(()=>{})}
@@ -1018,7 +1037,7 @@ async function detector(){
  const F=['ean_13','ean_8','upc_a','upc_e','code_128','itf'];
  try{const sup=await BarcodeDetector.getSupportedFormats();const f=F.filter(x=>sup.includes(x));return new BarcodeDetector(f.length?{formats:f}:undefined)}catch(e){return new BarcodeDetector()}}
 function scanMsg(t,ok){const m=$('scanMsg');m.textContent=t;m.style.background=ok===true?'rgba(31,138,76,.95)':ok===false?'rgba(216,69,46,.95)':'rgba(20,24,32,.9)'}
-function markDone(id){const x=ITEMS[id];if(!x)return;FRESH.delete(id);x.d=true;x.by=ME;push(id);render();shopRender();
+function markDone(id){const x=ITEMS[id];if(!x)return;sessRec(x);FRESH.delete(id);x.d=true;x.by=ME;push(id);render();shopRender();
  toast(`✓ ${x.n}`,()=>{if(ITEMS[id]){ITEMS[id].d=false;ITEMS[id].by='';push(id);render();shopRender()}})}
 function scanHit(code){
  code=String(code).replace(/\D/g,'').slice(0,20);if(code.length<6||!SCAN||SCAN.busy)return;
@@ -1221,6 +1240,10 @@ render();status('מתחבר לרשימה המשותפת…');
   CP=c;saveLocal();render()},()=>{});
  db.collection('recipes').onSnapshot(sn=>{MYREC=sn.docs.map(d=>{const v=d.data()||{};return{id:d.id,mine:true,name:typeof v.name==='string'?v.name.slice(0,40):'מתכון',icon:typeof v.icon==='string'&&ICONS.includes(v.icon)?v.icon:'🍲',serv:Math.max(1,Math.min(20,+v.serv||4)),by:typeof v.by==='string'?v.by:'',ing:Array.isArray(v.ing)?v.ing.filter(i=>i&&typeof i.n==='string').slice(0,60).map(i=>({n:i.n.slice(0,60),q:Math.max(1,Math.min(20,+i.q||1))})):[]}}).sort((a,b)=>a.name.localeCompare(b.name,'he'));if(CUR===-2)grid()},()=>{});
  db.doc('settings/announce').onSnapshot(d=>{const v=d.exists?d.data():null;annShow(v)},()=>{});
+ db.doc('settings/routes').onSnapshot(d=>{const v=d.exists?d.data():null;const o={};if(v&&v.r&&typeof v.r==='object')for(const[k,R]of Object.entries(v.r)){if(typeof k!=='string'||k.length>60||!R||typeof R!=='object')continue;const a={},i={};
+  if(R.a&&typeof R.a==='object')for(const[c,t]of Object.entries(R.a)){if(Array.isArray(t)&&+t[0]>=0&&+t[0]<=1)a[c]=[+t[0],+t[1]||1]}
+  if(R.i&&typeof R.i==='object')for(const[n,t]of Object.entries(R.i)){if(typeof n==='string'&&n.length<=60&&Array.isArray(t)&&+t[0]>=0&&+t[0]<=1)i[n]=[+t[0],+t[1]||1]}
+  o[k]={a,i,s:Math.max(0,+R.s||0)}}ROUTES=o;if(SHOP)shopRender()},()=>{});
  db.doc('settings/barcodes').onSnapshot(d=>{const v=d.exists?d.data():null;const m={};if(v&&v.m&&typeof v.m==='object')for(const[k,n]of Object.entries(v.m)){if(/^\d{6,20}$/.test(k)&&typeof n==='string')m[k]=n.slice(0,60)}BC=m},()=>{});
  db.doc('settings/catalog').onSnapshot(d=>{const v=d.exists?d.data():null;applyCat(cleanCat(v&&v.items));saveLocal();render();grid()},()=>{});
  db.doc('presence/shop').onSnapshot(d=>{const v=d.exists?d.data():null;PRES=v&&typeof v.by==='string'?{by:v.by,t:+v.t||0,on:!!v.on}:null;PRES_READY=true;presBanner()},()=>{});
