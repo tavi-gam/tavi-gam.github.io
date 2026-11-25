@@ -333,7 +333,7 @@ const user={id:async()=>cfg.uid,isOwner:async()=>false,canEdit:async()=>true,can
 /* ---- start after joining ---- */
 /* ---- trial / subscription ---- */
 async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.code})}catch(e){if(window.__billState===undefined)window.__billState=null;return}
- window.__billState=b?b.state:null;
+ window.__billState=b?b.state:null;window.__billDays=b&&b.state==='trial'?Math.max(0,Math.ceil((new Date(b.trial_until)-Date.now())/864e5)):null;
  let pw=document.getElementById('paywall'),tb=document.getElementById('trialbar');
  if(!b||b.state==='paid'){pw&&pw.remove();tb&&tb.remove();return}
  const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1342,19 +1342,19 @@ render();status('מתחבר לרשימה המשותפת…');
   ['🔔','עוד כמה דברים קטנים',['לוחצים על 🔔 כדי לקבל התראה כשמוסיפים מוצר או כשמישהו בסופר','מוסיפים את האפליקציה למסך הבית, וזה כמו אפליקציה רגילה','כפתור ♿ משנה גודל טקסט, מצב כהה ובהירות','מתכונים: לחיצה אחת וכל המצרכים ברשימה']]
  ];
  const TP=['💳','תקופת ניסיון ומנוי',[],'trial.mp4'],TK='shop-onb-trial-v1',ALL=P.slice();let i=0;
- const needTrial=()=>window.__billState&&window.__billState!=='paid';
+ const needTrial=()=>window.__billState==='trial'&&window.__billDays!=null&&window.__billDays<=5;
  function show(){const[ic,t,b,vid]=P[i];const v=$('onbV');if(vid&&!v.src.endsWith(vid))v.src=vid;v.style.display=vid?'block':'none';$('onbSnd').style.display=vid&&v.muted?'block':'none';$('onbI').style.display=vid?'none':'';if(vid){try{v.currentTime=0;v.muted=false;v.play().then(()=>{$('onbSnd').style.display='none'}).catch(()=>{v.muted=true;$('onbSnd').style.display='block';v.play().catch(()=>{})})}catch(e){}}else{try{v.pause()}catch(e){}}$('onbI').textContent=ic;$('onbT').textContent=t;
   $('onbB').innerHTML=b.map(x=>'<li>'+x.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</li>').join('');
   $('onbD').innerHTML=P.map(()=>'<i></i>').join('');[...$('onbD').children].forEach((d,k)=>d.className=k===i?'on':'');$('onbN').textContent=i===P.length-1?'יאללה, מתחילים':'הבא';$('onbS').hidden=i===P.length-1}
  function done(){try{localStorage.setItem(K,'1');if(P.includes(TP))localStorage.setItem(TK,'1')}catch(e){}try{$('onbV').pause()}catch(e){}$('onb').hidden=true}
- window.openGuide=only=>{P.length=0;if(only==='trial')P.push(TP);else{P.push(...ALL);if(needTrial())P.splice(1,0,TP)}i=0;show();$('onb').hidden=false;setTimeout(()=>$('onbN').focus(),30)};
+ window.openGuide=only=>{P.length=0;if(only==='trial')P.push(TP);else P.push(...ALL);i=0;show();$('onb').hidden=false;setTimeout(()=>$('onbN').focus(),30)};
  $('onbN').addEventListener('click',()=>{if(i<P.length-1){i++;show()}else done()});
  $('onbS').addEventListener('click',done);
  $('onbSnd').addEventListener('click',()=>{const v=$('onbV');v.muted=false;v.currentTime=0;v.play().catch(()=>{});$('onbSnd').style.display='none'});
  $('onbV').addEventListener('volumechange',()=>{if(!$('onbV').muted)$('onbSnd').style.display='none'});
  let seen=false;try{seen=!!localStorage.getItem(K)}catch(e){}
  if(!seen){let w=0;const t=setInterval(()=>{if(window.__billState===undefined&&++w<10)return;const g=document.querySelector('.gate');if(g&&g.isConnected&&getComputedStyle(g).display!=='none')return;let has=false;try{has=!!(JSON.parse(localStorage.getItem('shop-standalone-v1'))||{}).code}catch(e){}if(!has)return;clearInterval(t);setTimeout(openGuide,600)},500)}
- else{let n=0;const t2=setInterval(()=>{if(++n>40){clearInterval(t2);return}if(window.__billState===undefined)return;clearInterval(t2);let ts=false;try{ts=!!localStorage.getItem(TK)}catch(e){}if(needTrial()&&!ts)setTimeout(()=>openGuide('trial'),800)},500)}
+ {let n=0;const t2=setInterval(()=>{if(++n>240||(!document.getElementById('onb').hidden)){if(n>240)clearInterval(t2);return}if(window.__billState===undefined)return;let ms=false;try{ms=!!localStorage.getItem(K)}catch(e){}if(!ms)return;clearInterval(t2);let ts=false;try{ts=!!localStorage.getItem(TK)}catch(e){}if(needTrial()&&!ts)setTimeout(()=>openGuide('trial'),800)},500)}
 }
 </script>
 <!-- ---------- accessibility menu ---------- -->
