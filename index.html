@@ -68,7 +68,7 @@ h3{font-size:17px;margin:0 0 8px}
 .eadd{display:flex;gap:8px;margin-top:10px}.eadd .etext{flex:1}
 .rtile .em{font-size:46px!important}.rtile{background:light-dark(#fff8ef,#2a2620)}
 .adder{display:block;font-size:12.5px;color:var(--mute)}
-.av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-size:17px;line-height:1;margin-inline-end:8px;vertical-align:middle;color:#fff;font-weight:700;background:var(--line);flex:none;cursor:pointer}.av:empty{display:none}#list .av{width:24px;height:24px;font-size:14px;margin-inline-end:5px}.shophead>div:first-child{flex:1;min-width:0}.shophead button{white-space:nowrap;padding:0 12px}#shopRoute{white-space:normal!important;padding:2px 0 0!important}
+.av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-size:17px;line-height:1;margin-inline-end:8px;vertical-align:middle;color:#fff;font-weight:700;background:var(--line);flex:none;cursor:pointer}.av:empty{display:none}#list .av{width:24px;height:24px;font-size:14px;margin-inline-end:5px}.shophead{flex-wrap:wrap;gap:10px}.shophead>div:first-child{flex:1 1 100%;min-width:0}.shophead>div:last-child{flex:1 1 100%}.shophead>div:last-child>button{flex:1}.shophead button{white-space:nowrap;padding:0 12px}#shopRoute{white-space:normal!important;padding:2px 0 0!important}
 .emogrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}.emogrid button{font-size:28px;min-height:54px;border:2px solid var(--line);border-radius:14px;background:transparent}.emogrid button.on{border-color:var(--acc);background:var(--acc2)}
 .shop{position:fixed;inset:0;background:var(--bg);z-index:7;overflow-y:auto;padding:0 0 40px}
 .shop[hidden]{display:none}
@@ -424,7 +424,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     <div id="list"></div>
     <div class="total" id="total"></div>
     <div class="tools">
-      <button id="shopGo" type="button" class="shopgo">🛒 מצב קנייה</button>
+      <button id="shopGo" type="button" class="shopgo">🛒 נכנסתי לסופר</button>
       <button id="finish" type="button" class="finish">סיימתי קנייה ✓</button>
       <button id="copy" type="button">העתק לוואטסאפ</button>
       <button id="clearDone" type="button">נקה מה שנקנה</button>
@@ -473,7 +473,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <div class="sheet" id="esheet" hidden><div class="sheetin rsheet" id="ebody" role="dialog" aria-modal="true" aria-label="עריכת מתכון"></div></div>
 <div class="sheet" id="rsheet" hidden><div class="sheetin rsheet" id="rbody" role="dialog" aria-modal="true"></div></div>
 <div class="shop" id="shop" hidden role="dialog" aria-modal="true" aria-label="מצב קנייה">
-  <div class="shophead"><div><b id="shopLeft"></b><span id="shopCost"></span><button type="button" id="shopRoute" style="display:block;background:transparent;border:0;color:inherit;opacity:.85;font-size:13px;padding:2px 0 0;min-height:0;text-align:start;text-decoration:underline dotted"></button></div><div style="display:flex;gap:8px"><button type="button" id="scanGo" style="background:#1f5fbf">📷 סריקה</button><button type="button" id="shopExit">סיום</button></div></div>
+  <div class="shophead"><div><b id="shopLeft"></b><span id="shopCost"></span><button type="button" id="shopRoute" style="display:block;background:transparent;border:0;color:inherit;opacity:.85;font-size:13px;padding:2px 0 0;min-height:0;text-align:start;text-decoration:underline dotted"></button></div><div style="display:flex;gap:8px"><button type="button" id="scanGo" style="background:#1f5fbf">📷 סריקה</button><button type="button" id="shopExit">✅ יצאתי מהסופר</button></div></div>
   <div class="shopnew" id="shopNew" hidden role="alert"></div>
   <div id="shopList"></div>
 </div>
@@ -982,11 +982,11 @@ function routeScore(x){const R=ROUTES[routeKey()];const dflt=x.c/AISLES.length;i
  const a=R.a[x.c]?R.a[x.c][0]:dflt,i=R.i[x.n]?R.i[x.n][0]:a;return[a,i]}
 $('shopRoute').addEventListener('click',()=>{const v=prompt('באיזה סניף של '+CHAIN+' אתם קונים? (למשל: תלפיות)\nכל סניף לומד מסלול משלו',BRANCH);if(v===null)return;
  BRANCH=v.trim().slice(0,30);try{localStorage.setItem('shop-branch',BRANCH)}catch(e){}shopRender()});
-const PRES_TTL=10*60*1000;
+const PRES_TTL=3*3600*1000;
 function setPresence(on,quiet){if(DB&&!READONLY&&ME){DB.doc('presence/shop').set(on?{by:ME,t:Date.now(),on:true}:{by:ME,t:Date.now(),on:false,quiet:!!quiet}).catch(()=>{})}}
 setInterval(()=>{if(SHOP&&document.visibilityState==='visible')setPresence(true)},3*60*1000);
 document.addEventListener('visibilitychange',()=>{if(SHOP&&document.visibilityState==='visible')setPresence(true)});
-addEventListener('pagehide',()=>{if(SHOP&&ME){const d={by:ME,t:Date.now(),on:false,quiet:true};if(window.__beacon)window.__beacon('presence/shop',d);else setPresence(false,true)}});
+
 setInterval(()=>{if(PRES_READY)presBanner()},60*1000);window.__presDbg=()=>JSON.stringify(PRES);
 const LEFT_TTL=2*3600*1000;let presSeen=null,PRES_READY=false;
 async function presBanner(){
@@ -1269,7 +1269,7 @@ render();status('מתחבר לרשימה המשותפת…');
   o[k]={a,i,s:Math.max(0,+R.s||0)}}ROUTES=o;if(SHOP)shopRender()},()=>{});
  db.doc('settings/barcodes').onSnapshot(d=>{const v=d.exists?d.data():null;const m={};if(v&&v.m&&typeof v.m==='object')for(const[k,n]of Object.entries(v.m)){if(/^\d{6,20}$/.test(k)&&typeof n==='string')m[k]=n.slice(0,60)}BC=m},()=>{});
  db.doc('settings/catalog').onSnapshot(d=>{const v=d.exists?d.data():null;applyCat(cleanCat(v&&v.items));saveLocal();render();grid()},()=>{});
- db.doc('presence/shop').onSnapshot(d=>{const v=d.exists?d.data():null;PRES=v&&typeof v.by==='string'?{by:v.by,t:+v.t||0,on:!!v.on,quiet:!!v.quiet}:null;if(!PRES_READY&&PRES&&PRES.by===ME&&PRES.on&&!SHOP)setPresence(false,true);PRES_READY=true;presBanner()},()=>{});
+ db.doc('presence/shop').onSnapshot(d=>{const v=d.exists?d.data():null;PRES=v&&typeof v.by==='string'?{by:v.by,t:+v.t||0,on:!!v.on,quiet:!!v.quiet}:null;if(!PRES_READY&&PRES&&PRES.by===ME&&PRES.on&&!SHOP&&Date.now()-PRES.t<PRES_TTL)setTimeout(()=>{if(!SHOP)$('shopGo').click()},300);PRES_READY=true;presBanner()},()=>{});
  db.collection('history').orderBy('t','desc').limit(60).onSnapshot(sn=>{HIST=sn.docs.map(d=>{const v=d.data()||{};return{id:d.id,t:+v.t||0,total:+v.total||0,count:+v.count||0,chain:typeof v.chain==='string'?v.chain.slice(0,30):'',items:Array.isArray(v.items)?v.items.filter(i=>i&&typeof i.n==='string').slice(0,150).map(i=>({n:i.n.slice(0,60),q:Math.max(1,Math.min(99,+i.q||1)),p:+i.p>0?+i.p:0})):[]}});if(VIEW==='hist')hist()},()=>{});
  saveLocal();
 })();
@@ -1301,7 +1301,7 @@ render();status('מתחבר לרשימה המשותפת…');
  const P=[
   ['🎬','סרטון קצר: איך זה עובד',[],1],
   ['🛒','מוסיפים לרשימה בלחיצה',['בוחרים מחלקה בקטלוג ולוחצים על תמונה. המוצר נכנס לרשימה','לחיצה נוספת מוסיפה עוד יחידה','לחיצה ארוכה על מוצר מעדכנת את המחיר או מסמנת מבצע','חסר מוצר? מחפשים אותו ולוחצים ➕ "הוספה לקטלוג"']],
-  ['👨‍👩‍👧','רשימה אחת לכל המשפחה',['כל מה שמוסיפים או מסמנים, כולם רואים מיד','בסופר לוחצים "מצב קנייה": מסך גדול שלא נכבה','מחליקים על מוצר ימינה כדי לסמן שנקנה','למעלה רואים כמה הקנייה תעלה']],
+  ['👨‍👩‍👧','רשימה אחת לכל המשפחה',['כל מה שמוסיפים או מסמנים, כולם רואים מיד','בסופר לוחצים "🛒 נכנסתי לסופר", ובסוף "✅ יצאתי מהסופר"','מחליקים על מוצר ימינה כדי לסמן שנקנה','למעלה רואים כמה הקנייה תעלה']],
   ['🔔','עוד כמה דברים קטנים',['לוחצים על 🔔 כדי לקבל התראה כשמוסיפים מוצר או כשמישהו בסופר','מוסיפים את האפליקציה למסך הבית, וזה כמו אפליקציה רגילה','כפתור ♿ משנה גודל טקסט, מצב כהה ובהירות','מתכונים: לחיצה אחת וכל המצרכים ברשימה']]
  ];
  let i=0;
