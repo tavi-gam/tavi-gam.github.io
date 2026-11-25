@@ -337,6 +337,8 @@ async function start(){
  colSubs.push({path:'members',next:()=>{}});
  try{await rpc('shop_join',{code:cfg.code})}catch(e){if(!Object.keys(cache).length)throw e;online=false}
  write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''});
+ setInterval(()=>{if(document.visibilityState==='visible'&&online)write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''})},2*60*1000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')write('members/'+cfg.uid,{name:cfg.name,t:Date.now(),emo:cfg.emo||''})});
  try{if(window.supabase){const sb=window.supabase.createClient(SB_URL,SB_KEY);chan=sb.channel('shop-'+(await sha('shop:'+cfg.code.toLowerCase().trim()))).on('broadcast',{event:'chg'},poke).subscribe()}}catch(e){}
  setInterval(()=>{if(!document.hidden)refresh()},15000);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});

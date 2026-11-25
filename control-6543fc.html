@@ -62,21 +62,22 @@ async function load(){
 function draw(){
  const F=(DATA.families||[]),q=$('q').value.trim().toLowerCase();
  const now=Date.now(),day=864e5;
- const mem=F.reduce((a,f)=>a+(f.members||[]).length,0);
- const active=F.filter(f=>f.last&&now-new Date(f.last)<day).length;
+ const ON=5*60e3,isOn=m=>m.seen&&now-new Date(m.seen)<ON;
+ const mem=F.reduce((a,f)=>a+(f.members||[]).filter(isOn).length,0);
+ const active=F.filter(f=>(f.members||[]).some(isOn)).length;
  const live=F.filter(f=>f.presence&&f.presence.on&&now-f.presence.t<3*3600e3);
- $('stats').innerHTML=[['👨‍👩‍👧','משפחות',F.length],['🙋','משתמשים',mem],['⚡','פעילות היום',active],['🛒','בסופר עכשיו',live.length]].map(([i,t,v])=>`<div class="stat"><span class="mut">${i} ${t}</span><b>${v}</b></div>`).join('');
+ $('stats').innerHTML=[['🟢','מחוברים עכשיו',mem],['👨‍👩‍👧','משפחות מחוברות',active],['🛒','בסופר עכשיו',live.length]].map(([i,t,v])=>`<div class="stat"><span class="mut">${i} ${t}</span><b>${v}</b></div>`).join('');
  $('upd').textContent='עודכן '+new Date().toLocaleTimeString('he-IL')+' · מתרענן כל 30 שניות';
- const list=F.filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
+ const list=F.filter(f=>(f.members||[]).some(isOn)).filter(f=>!q||String(f.code||'').includes(q)||(f.members||[]).some(m=>String(m.name||'').toLowerCase().includes(q)));
  $('fams').innerHTML=list.map(f=>{
   const p=f.presence,inStore=p&&p.on&&now-p.t<3*3600e3,who=inStore?(f.members||[]).find(m=>m.id===p.by):null;
-  const ms=(f.members||[]).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
-   return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot${on?' on':''}"></span>${on?'פעיל עכשיו':'נכנס '+ago(seen)}</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
+  const ms=(f.members||[]).filter(isOn).map(m=>{const nm=m.name||'ללא שם',seen=m.seen;const on=seen&&now-new Date(seen)<10*60e3;
+   return `<div class="mem"><span class="av" style="background:${m.emo?'var(--paper)':col(nm)}">${m.emo?esc(m.emo):esc([...nm].slice(0,2).join(''))}</span><div><b>${esc(nm)}</b><small><span class="dot on"></span>מחובר/ת</small></div></div>`}).join('')||'<span class="mut">אין משתמשים רשומים</span>';
   return `<div class="card fam"><div class="famh"><div>${f.code?`<span class="code">${esc(f.code)}</span>`:`<span class="mut">קוד: יופיע כשמישהו יפתח את האפליקציה</span>`}
    <div class="mut" style="margin-top:6px">נוצרה ${f.created?new Date(f.created).toLocaleDateString('he-IL'):'—'} · פעילות אחרונה ${ago(f.last)}</div></div>
    <div style="display:flex;gap:6px;flex-wrap:wrap">${inStore?`<span class="pill live">🛒 מישהו בסופר עכשיו</span>`:`<span class="pill idle">לא בסופר</span>`}${f.admin?'<span class="pill">🔑 יש מנהל</span>':''}</div></div>
    <div class="members">${ms}</div>
-   <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut">לא נמצאו משפחות</div>'}
+   <div class="nums"><span>📝 ברשימה עכשיו: <b>${f.open_items||0}</b></span><span>📦 פריטים בסה״כ: <b>${f.items||0}</b></span><span>⭐ מוצרים שנוספו: <b>${f.catalog||0}</b></span><span class="mut">מזהה: ${esc(f.id)}</span></div></div>`}).join('')||'<div class="card mut" style="text-align:center;padding:30px">😴 אף אחד לא מחובר כרגע</div>'}
 $('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
  try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
 $('ref').onclick=()=>load().then(()=>toast('עודכן')).catch(()=>toast('אין חיבור'));
