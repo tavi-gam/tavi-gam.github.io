@@ -1,0 +1,30 @@
+name: prices
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 1 * * *'
+permissions:
+  contents: write
+concurrency: prices
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: probe
+        run: |
+          pip install il-supermarket-scraper 2>&1 | tail -3
+          python - <<'PY'
+          import il_supermarket_scarper as m, inspect, pkgutil
+          print('VERSION', getattr(m,'__version__',None))
+          print('ATTRS', [a for a in dir(m) if not a.startswith('_')])
+          import il_supermarket_scarper.scrappers_factory as f
+          print('FACTORY', [a for a in dir(f) if not a.startswith('_')])
+          try:
+            print('SCRAPERS', [s.name for s in f.ScraperFactory])
+          except Exception as e: print('ERR',e)
+          print(inspect.signature(m.ScarpingTask.__init__))
+          PY
