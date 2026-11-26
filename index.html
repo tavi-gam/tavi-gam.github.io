@@ -998,7 +998,7 @@ swipe($('list'),'.items li',(li,dir)=>{const id=li.dataset.id,x=ITEMS[id];if(!x)
  else{const s=[{id,...x}];delete ITEMS[id];push(id);render();toast(`"${x.n}" נמחק`,()=>restore(s))}});
 swipe($('shopList'),'.srow',(b)=>{b.dataset.swiped='';b.click()});
 /* ---------- render ---------- */
-function render(){try{quickBtn()}catch(e){}try{const n=list().filter(x=>!x.d).length;if(navigator.setAppBadge)n?navigator.setAppBadge(n):navigator.clearAppBadge()}catch(e){}
+function render(){try{quickBtn()}catch(e){}try{if(navigator.clearAppBadge)navigator.clearAppBadge()}catch(e){}
  list().forEach(x=>{const[v,k]=resolve(x.n,x.c);ITEMS[x.id].p=v;ITEMS[x.id].src=k});
  const it=list(),done=it.filter(x=>x.d).length;
  $('count').textContent=it.length?`${done} מתוך ${it.length} בעגלה`:'';
