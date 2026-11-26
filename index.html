@@ -359,7 +359,7 @@ async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.cod
 function showPay(b,locked){const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let pw=document.getElementById('paywall');if(!pw){pw=document.createElement('div');pw.id='paywall';document.body.appendChild(pw)}
  pw.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(20,24,32,.75);display:flex;align-items:center;justify-content:center;padding:18px';
- pw.innerHTML=`<div role="dialog" aria-modal="true" style="background:#fffdf8;color:#1d2433;border-radius:22px;max-width:440px;width:100%;padding:26px 22px;text-align:center;font-family:system-ui">
+ pw.innerHTML=`<style>#paywall [role=dialog]{color-scheme:light;forced-color-adjust:none}#paywall [role=dialog] h2,#paywall [role=dialog] p,#paywall [role=dialog] #planNote{color:#111827!important;font-weight:500}#paywall #noteTxt{color:#7a1d10!important}#paywall #payOut{color:#374151!important}</style><div role="dialog" aria-modal="true" style="background:#fffdf8;color:#111827;border-radius:22px;max-width:440px;width:100%;padding:26px 22px;text-align:center;font-family:system-ui">
   <div style="font-size:60px">🛒</div><h2 style="margin:6px 0 8px;font-size:24px">${locked?'תקופת הניסיון הסתיימה':'ממשיכים עם תביא גם'}</h2>
   <p style="margin:0 0 14px;font-size:16px;line-height:1.5">${locked?'הרשימה שלכם שמורה ומחכה. כדי להמשיך להוסיף ולסמן מוצרים צריך להפעיל מנוי.':'אהבתם? אפשר להפעיל מנוי כבר עכשיו.'}</p>
   <div id="plans" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0">
@@ -367,11 +367,11 @@ function showPay(b,locked){const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':
    <button type="button" data-plan="y" style="border:3px solid #bdb5a6;background:#fff;color:#222;border-radius:16px;padding:12px 8px;font:inherit;cursor:pointer;position:relative"><span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#1f8a4c;color:#fff;border-radius:99px;padding:2px 10px;font:700 12px system-ui;white-space:nowrap">משתלם</span><div style="font:700 15px system-ui">שנתי</div><div style="font:800 20px system-ui;color:inherit;margin-top:4px">${E(b.price_year||'')}</div></button>
   </div>
   <p id="planNote" style="font-size:15px;margin:6px 0"></p>
-  <p style="background:#f4efe6;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;white-space:pre-wrap;margin:12px 0">${E(b.payinfo)}</p>
+  <p style="background:#efe6d6;border:1px solid #d9cdb8;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;white-space:pre-wrap;margin:12px 0">${E(b.payinfo)}</p>
   <p style="font-size:15px;margin:8px 0">כתבו בהערה של ההעברה: <b id="noteTxt" style="background:#fde8e4;border-radius:8px;padding:2px 8px;display:inline-block"></b></p>
   <div style="display:flex;gap:10px;margin-top:14px"><button type="button" id="payChk" style="flex:1;min-height:50px;border:0;border-radius:14px;background:#1f8a4c;color:#fff;font:700 17px system-ui">שילמתי · לבדוק שוב</button>${locked?'':'<button type="button" id="payX" style="flex:1;min-height:50px;border:2px solid #e6dfd2;border-radius:14px;background:transparent;font:600 17px system-ui">אחר כך</button>'}</div>
   <button type="button" id="payRef" style="margin-top:12px;width:100%;min-height:46px;border:2px dashed #1f8a4c;border-radius:14px;background:#e8f6ee;color:#1f8a4c;font:700 15px system-ui">🎁 או: הביאו משפחה חברה וקבלו חודש חינם</button>
-  ${locked?'<button type="button" id="payOut" style="margin-top:12px;background:none;border:0;color:#6b7280;text-decoration:underline;font:14px system-ui">יציאה / כניסה עם קוד אחר</button>':''}</div>`;
+  ${locked?'<button type="button" id="payOut" style="margin-top:12px;background:none;border:0;color:#374151;text-decoration:underline;font:15px system-ui">יציאה / כניסה עם קוד אחר</button>':''}</div>`;
  const pick=pl=>{pw.querySelectorAll('[data-plan]').forEach(x=>{const on=x.dataset.plan===pl;x.style.borderColor=on?'#d8452e':'#bdb5a6';x.style.background=on?'#d8452e':'#fff';x.style.color=on?'#fff':'#222';x.style.boxShadow=on?'0 6px 16px rgba(216,69,46,.35)':'none'});
   pw.querySelector('#planNote').textContent=pl==='y'?'תשלום אחד לשנה שלמה':'מתחדש כל חודש';pw.querySelector('#noteTxt').textContent=cfg.code+' '+(pl==='y'?'שנתי':'חודשי')};
  pw.querySelectorAll('[data-plan]').forEach(x=>x.onclick=()=>pick(x.dataset.plan));pick('m');
