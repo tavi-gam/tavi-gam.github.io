@@ -1607,6 +1607,7 @@ html.a11y-cursor,html.a11y-cursor *{cursor:url("data:image/svg+xml,%3Csvg xmlns=
  $('a11yX').addEventListener('click',close);
  $('a11yP').addEventListener('click',e=>{if(e.target.id==='a11yP')close()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('a11yP').hidden)close()});
+ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const open=[...document.querySelectorAll('.sheet:not([hidden]),#askv:not([hidden])')];const top=open[open.length-1];if(top){top.hidden=true;e.preventDefault()}});
  $('a11yPlus').addEventListener('click',()=>{S.size=Math.min(160,S.size+10);apply()});
  $('a11yDim').addEventListener('click',()=>{S.br=Math.max(40,S.br-10);apply()});
  $('a11yLit').addEventListener('click',()=>{S.br=Math.min(100,S.br+10);apply()});

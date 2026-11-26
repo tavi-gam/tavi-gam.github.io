@@ -39,7 +39,7 @@ def toks(s):
 def ttoks(s):  # base tokens for the catalog name (no prefix-stripped duplicates)
     res = []
     for t in norm(s).split():
-        if len(t) >= 4 and t[0] in 'בול' and not t[1:].isdigit():
+        if t.startswith('וו') and len(t) >= 4:  # catalog names are canonical: only fold double-vav spelling
             t = t[1:]
         res.append(t)
     return res
@@ -87,6 +87,8 @@ def best_price(name, aisle, items):
         return None
     if aisle == 0 and any(c[2]['w'] for c in cands):
         cands = [c for c in cands if c[2]['w']]
+    if any(c[2]['ns'].startswith(head) for c in cands):  # e.g. ג'ינג'ר should not match "חליטת ג'ינג'ר"
+        cands = [c for c in cands if c[2]['ns'].startswith(head)]
     top = max(c[0] for c in cands)
     lead = lambda c: 0 if c[2]['ns'].startswith(head) else 1
     pool = sorted([c for c in cands if c[0] == top], key=lambda c: (lead(c), c[1]))[:7]
