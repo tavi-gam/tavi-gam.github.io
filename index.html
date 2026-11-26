@@ -492,7 +492,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <section class="card" aria-labelledby="cmpT">
     <h3 id="cmpT">כמה הסל שלך היה עולה ברשת אחרת?</h3>
     <div id="cmpBody"></div>
-    <p class="src">ההשוואה מבוססת על סקר המכון לחקר הקמעונאות לפי נתוני פרייסז מ־14 באוגוסט 2026: אותו סל של 143 מוצרים בעשר רשתות. * אושר עד ונטו חסכון לא נכללו בסקר הזה. המיקום שלהן מוערך לפי הפער שלהן מרמי לוי בסקר של נובמבר 2026 (243 מוצרים). זו הערכה בלבד, והפער משתנה ממוצר למוצר וגם בין סניפים של אותה רשת.</p>
+    <p class="src">המחירים מתעדכנים כל בוקר מקובצי המחירים שהרשתות מפרסמות לפי חוק (סניף אחד בכל רשת). (3/5) = נמצאו 3 מתוך 5 מוצרים, ולשאר נלקח המחיר שברשימה. ויקטורי, קרפור, מחסני השוק וחצי חינם עדיין לא זמינות.</p>
   </section>
 
   <section class="card">
@@ -1318,14 +1318,13 @@ function totals(){
  const ne=priced.filter(x=>x.src==='est').length;
  $('total').innerHTML=priced.length?`<span>סה״כ משוער (${priced.length} מתוך ${it.length} פריטים עם מחיר${ne?`, ${ne} מהם הערכה`:''})<br>נשאר לקנות: ${money(left)}</span><b>${money(sum)}</b>`
   :`<span>הוסיפו מחיר ליד הפריטים כדי לראות סה״כ והשוואה בין רשתות.</span><b>—</b>`;
- const me=CHAINS.find(c=>c[0]===CHAIN),max=Math.max(...CHAINS.map(c=>c[1]));
- let body;
- if(!me)body=`<p>ל״${esc(CHAIN)}״ אין נתונים בסקר. ככה יצא הסל של הסקר בכל רשת (רמי לוי = 100):</p>`;
- else if(!sum)body=`<p>ככה יצא סל הסקר בכל רשת (רמי לוי = 100). אחרי שתוסיפו מחירים, תראו כאן כמה הסל שלכם היה עולה בכל אחת.</p>`;
- else body=`<p>לפי המחירים שהזנתם ב״${esc(me[0])}״, ככה הסל שלכם היה יוצא בערך בכל רשת:</p>`;
- body+='<div class="rows">'+CHAINS.map(c=>{const idx=c[1]/CHAINS[0][1]*100;const v=me&&sum?money(sum*c[1]/me[1]):Math.round(idx)+'';
-  return `<div class="row${me&&c[0]===me[0]?' me':''}"><span>${c[0]}${c[2]?'*':''}</span><span class="t"><i style="width:${(c[1]/max*100).toFixed(1)}%"></i></span><span class="v">${v}</span></div>`}).join('')+'</div>';
- if(me&&sum){const diff=sum-sum*CHAINS[0][1]/me[1];if(diff>1)body+=`<p class="src" style="color:var(--ink)">ההפרש המשוער מול ${CHAINS[0][0]}: <b>${money(diff)}</b> לקנייה הזאת.</p>`}
+ let body;const{open,res}=cmpCalc();const myCh=(typeof OFFMAP!=='undefined'&&OFFMAP[CHAIN])||CHAIN;
+ if(!Object.keys(OFF).length)body='<p>מחירי הרשתות עוד נטענים…</p>';
+ else if(!open.length)body='<p>הוסיפו מוצרים לרשימה, ותראו כאן כמה הרשימה שלכם עולה בכל רשת לפי המחירים של היום.</p>';
+ else if(!res.length)body='<p>לא מצאנו את המוצרים שברשימה בקובצי המחירים של הרשתות.</p>';
+ else{const max=Math.max(...res.map(r=>r.sum)),gm=Math.max(...res.map(r=>r.got)),best=res.find(r=>r.got===gm);
+  body=`<p>לפי המחירים האמיתיים של היום, ככה הרשימה שלכם (${open.length} מוצרים) יוצאת בכל רשת:</p><div class="rows">`+res.map(r=>`<div class="row${r.ch===myCh?' me':''}"><span>${r.ch===best.ch?'🏆 ':''}${esc(r.ch)}${r.got<open.length?`<small style="opacity:.7"> (${r.got}/${open.length})</small>`:''}</span><span class="t"><i style="width:${(r.sum/max*100).toFixed(1)}%"></i></span><span class="v">${money(r.sum)}</span></div>`).join('')+'</div>';
+  const mine=res.find(r=>r.ch===myCh);if(mine&&mine.ch!==best.ch&&mine.sum-best.sum>1)body+=`<p class="src" style="color:var(--ink)">ב״${esc(best.ch)}״ הרשימה זולה ב־<b>${money(mine.sum-best.sum)}</b> מאשר ב״${esc(mine.ch)}״.</p>`}
  $('cmpBody').innerHTML=body;
  cost();
 }
