@@ -25,5 +25,40 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "הוספת מוצר",
+      "short_name": "הוספה",
+      "url": "./?go=add",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "הרשימה",
+      "short_name": "רשימה",
+      "url": "./?go=list",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "נכנסתי לסופר",
+      "short_name": "בסופר",
+      "url": "./?go=shop",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
