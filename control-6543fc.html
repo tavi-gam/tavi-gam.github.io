@@ -48,7 +48,10 @@ button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:
  </div>
  <div class="stats" id="stats"></div>
  <div class="card" id="renew" hidden style="border:2px solid #c27a00"></div>
- <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button></div>
+ <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button><button class="ghost" id="fPr">📊 מחירי רשתות</button></div>
+ <div class="card" id="prCard" hidden><h2>📊 מחירים אמיתיים לפי רשת</h2><div class="mut" id="prUpd" style="margin-bottom:8px"></div>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:15px"><thead><tr style="text-align:start;color:var(--mut)"><th style="text-align:start;padding:6px">רשת</th><th style="text-align:start;padding:6px">מוצרים עם מחיר</th><th style="text-align:start;padding:6px">כיסוי</th><th style="text-align:start;padding:6px">סניף</th><th style="text-align:start;padding:6px">עודכן</th><th style="text-align:start;padding:6px">סטטוס</th></tr></thead><tbody id="prBody"></tbody></table></div>
+  <p class="mut" style="font-size:13px;margin-top:8px">מתעדכן לבד כל לילה מקובצי שקיפות המחירים של הרשתות. אותם נתונים שהאפליקציה משתמשת בהם.</p></div>
  <div class="card" id="setCard" hidden><h2>💳 מה המשפחות רואות כשהניסיון נגמר</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="mut">מחיר חודשי</label><input id="sPrice" maxlength="60"></div><div><label class="mut">מחיר שנתי</label><input id="sYear" maxlength="60"></div></div>
   <label class="mut" style="display:block;margin-top:10px">הסבר איך משלמים (מספר ביט / פייבוקס וכו׳)</label><textarea id="sPay" maxlength="600" style="width:100%;min-height:90px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--bg);color:inherit;font:inherit"></textarea>
@@ -112,6 +115,13 @@ const onBill=async e=>{const x=e.target.closest('[data-fid]');if(!x)return;
 $('fams').addEventListener('click',onBill);$('renew').addEventListener('click',onBill);
 const mode=m=>{MODE=m;$('fOn').setAttribute('aria-pressed',m==='on');$('fAll').setAttribute('aria-pressed',m==='all');DATA&&draw()};
 $('fOn').onclick=()=>mode('on');$('fAll').onclick=()=>mode('all');
+const PR_ALL=['רמי לוי','שופרסל דיל','אושר עד','יוחננוף','טיב טעם','סלאח דבאח','קשת טעמים','קינג סטור','ויקטורי','קרפור היפר','מחסני השוק','חצי חינם'];
+$('fPr').onclick=async()=>{const c=$('prCard');c.hidden=!c.hidden;if(c.hidden)return;$('prBody').innerHTML='<tr><td class="mut" style="padding:6px">טוען…</td></tr>';
+ try{const r=await fetch('prices.json?t='+Date.now());const j=await r.json(),ch=j.chains||{},tot=536;
+  $('prUpd').textContent='עדכון אחרון: '+(j.updated?new Date(j.updated*1000).toLocaleString('he-IL'):'—');
+  const rows=PR_ALL.map(n=>{const v=ch[n];const k=v?Object.keys(v.items||{}).length:0;return{n,k,st:v?v.store:'',t:v?v.t:0,ok:!!v&&k>0,old:v&&Date.now()/1000-v.t>3*86400}}).sort((a,b)=>b.k-a.k);
+  $('prBody').innerHTML=rows.map(x=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px"><b>${esc(x.n)}</b></td><td style="padding:8px 6px">${x.k}</td><td style="padding:8px 6px">${x.ok?Math.round(x.k/tot*100)+'%':'—'}</td><td style="padding:8px 6px">${esc(x.st||'—')}</td><td style="padding:8px 6px">${x.t?new Date(x.t*1000).toLocaleDateString('he-IL'):'—'}</td><td style="padding:8px 6px">${x.ok?(x.old?'<span class="pill trial">ישן</span>':'<span class="pill paid">פעיל</span>'):'<span class="pill exp">לא נגיש</span>'}</td></tr>`).join('')}
+ catch(e){$('prBody').innerHTML='<tr><td class="mut" style="padding:6px">לא הצלחתי לטעון את המחירים</td></tr>'}};
 $('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DATA){$('sPrice').value=DATA.price||'';$('sYear').value=DATA.price_year||'';$('sPay').value=DATA.payinfo||''}};
 $('sSave').onclick=async()=>{try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_pub',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,price:$('sPrice').value.trim(),price_year:$('sYear').value.trim(),payinfo:$('sPay').value.trim()})});
  if(await r.json()){toast('נשמר');$('setCard').hidden=true;load()}else toast('נכשל')}catch(e){toast('אין חיבור')}};
