@@ -134,7 +134,7 @@ def store_of(fname):
     parts = os.path.basename(fname).split('.')[0].split('-')
     for i, x in enumerate(parts):
         if re.fullmatch(r'\d{8,14}', x) and i > 0 and parts[i - 1].isdigit():
-            return str(int(parts[i - 1]))
+            return int(parts[i - 1])
     return None
 
 def parse_promos(path):
