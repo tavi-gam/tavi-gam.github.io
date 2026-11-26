@@ -765,7 +765,13 @@ const otherChain=n=>{for(const[ch,o]of Object.entries(CP))if(ch!==CHAIN&&o[n]&&o
 let OFF={},OFFT=0;const OFFMAP={'שופרסל שלי':'שופרסל דיל','קרפור מרקט':'קרפור היפר'};
 const offChain=ch=>OFF[OFFMAP[ch]||ch];
 const offPrice=(n,ch)=>{const o=offChain(ch||CHAIN);const p=o&&o.items&&o.items[n]&&o.items[n].p>0?o.items[n].p:0;if(!p)return 0;const est=typeof REF!=='undefined'&&REF[n]?REF[n][0]:typeof EST!=='undefined'&&EST[n]?EST[n][0]:0;return est>0&&(p>est*3||p<est/3)?0:p};
-(async()=>{try{const r=await fetch('prices.json?d='+new Date().toISOString().slice(0,10));if(!r.ok)return;const j=await r.json();if(j&&j.chains){OFF=j.chains;OFFT=+j.updated||0;render();if(typeof SHOP!=='undefined'&&SHOP)shopRender()}}catch(e){}})();
+let OFFCH={};
+const chgOf=(n,ch)=>{const m=OFFCH[OFFMAP[ch||CHAIN]||ch||CHAIN];return m&&m[n]||null};
+async function loadOff(){try{const r=await fetch('prices.json?h='+Math.floor(Date.now()/36e5));if(!r.ok)return;const j=await r.json();if(!j||!j.chains)return;
+ const changed=+j.updated!==OFFT;OFF=j.chains;OFFT=+j.updated||0;
+ const m={};const now=Date.now()/1000;(j.history||[]).filter(h=>now-h.t<7*86400).slice().reverse().forEach(h=>h.list.forEach(c=>{(m[c.ch]=m[c.ch]||{})[c.n]={old:(m[c.ch]&&m[c.ch][c.n]?m[c.ch][c.n].old:c.old),new:c.new,t:h.t}}));OFFCH=m;
+ if(changed){render();if(typeof SHOP!=='undefined'&&SHOP)shopRender()}}catch(e){}}
+loadOff();setInterval(()=>{if(document.visibilityState==='visible')loadOff()},30*60*1000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadOff()});
 const resolve=(n,c)=>{const e=CP[CHAIN]&&CP[CHAIN][n];
  if(e&&e.s>0&&e.u>=Date.now())return[e.s,'sale'];
  if(e&&e.p>0)return[e.p,'memo'];
@@ -1012,7 +1018,8 @@ function sub(x){
  else if(x.src==='rough')bits.push('הערכה גסה');
  else if(x.src==='est'&&EST[x.n])bits.push('הערכה · '+EST[x.n][1]);
  else if(!x.p&&r)bits.push(r[1]);
- return bits.length?`<small${x.src==='sale'?' class="salep"':x.src==='ref'?' class="refp"':(x.src==='est'||x.src==='rough')?' class="estp"':''}>${esc(bits.join(' · '))}</small>`:'';
+ const cg=x.src==='official'?chgOf(x.n):null,cgs=cg&&Math.abs(cg.new-cg.old)>=.3?`<small style="font-weight:700;color:${cg.new>cg.old?'#b3261e':'#1f8a4c'}">${cg.new>cg.old?'▲ התייקר':'▼ הוזל'} מ־${esc(money(cg.old))} השבוע</small>`:'';
+ return (bits.length?`<small${x.src==='sale'?' class="salep"':x.src==='ref'?' class="refp"':(x.src==='est'||x.src==='rough')?' class="estp"':''}>${esc(bits.join(' · '))}</small>`:'')+cgs;
 }
 function hist(){
  const H=HIST.slice().sort((a,b)=>b.t-a.t);
