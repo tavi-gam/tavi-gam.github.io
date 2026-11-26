@@ -471,6 +471,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     <div id="listView" hidden>
     <div id="list"></div>
     <div class="total" id="total"></div>
+    <button type="button" id="quickGo" hidden style="width:100%;margin:10px 0 0;min-height:56px;border:2px dashed #c27a00;border-radius:16px;background:#fff7e6;color:#8a5a00;font:700 17px system-ui;cursor:pointer"></button>
     <div class="tools">
       <button id="shopGo" type="button" class="shopgo">🛒 נכנסתי לסופר</button>
       <button id="finish" type="button" class="finish">סיימתי קנייה ✓</button>
@@ -953,7 +954,7 @@ swipe($('list'),'.items li',(li,dir)=>{const id=li.dataset.id,x=ITEMS[id];if(!x)
  else{const s=[{id,...x}];delete ITEMS[id];push(id);render();toast(`"${x.n}" נמחק`,()=>restore(s))}});
 swipe($('shopList'),'.srow',(b)=>{b.dataset.swiped='';b.click()});
 /* ---------- render ---------- */
-function render(){
+function render(){try{quickBtn()}catch(e){}
  list().forEach(x=>{const[v,k]=resolve(x.n,x.c);ITEMS[x.id].p=v;ITEMS[x.id].src=k});
  const it=list(),done=it.filter(x=>x.d).length;
  $('count').textContent=it.length?`${done} מתוך ${it.length} בעגלה`:'';
@@ -1089,6 +1090,38 @@ $('shopList').addEventListener('click',e=>{
  const b=e.target.closest('.srow');if(!b)return;const id=b.dataset.id,x=ITEMS[id];if(!x)return;
  FRESH.delete(id);b.classList.add('gone');sessRec(x);x.d=true;x.by=ME;push(id);
  setTimeout(()=>{render();toast(`✓ ${x.n}`,()=>{SESS=SESS.filter(y=>y.n!==x.n);if(ITEMS[id]){ITEMS[id].d=false;ITEMS[id].by='';push(id);render()}})},260)});
+/* ---------- quick shop: nearest open supermarket ---------- */
+const OSMD=['Su','Mo','Tu','We','Th','Fr','Sa'];
+function ohNow(oh,d=new Date()){ // returns {open:bool, until:'HH:MM'|null, opens:'HH:MM'|null} or null if unknown
+ if(!oh||typeof oh!=='string')return null;oh=oh.trim();if(/^24\/7$/.test(oh))return{open:true,until:null,h24:true};
+ const day=d.getDay(),mins=d.getHours()*60+d.getMinutes();let today=null,any=false;
+ for(const part of oh.split(';')){const m=part.trim().match(/^((?:[A-Z][a-z](?:-[A-Z][a-z])?,?)+)\s+(.+)$/);if(!m)continue;any=true;
+  const days=new Set();m[1].split(',').filter(Boolean).forEach(r=>{const[a,b]=r.split('-');let i=OSMD.indexOf(a),j=OSMD.indexOf(b||a);if(i<0||j<0)return;for(let k=i;;k=(k+1)%7){days.add(k);if(k===j)break}});
+  if(!days.has(day))continue;
+  if(/off|closed/i.test(m[2])){today=[];continue}
+  today=m[2].split(',').map(x=>x.trim().match(/^(\d\d):(\d\d)-(\d\d):(\d\d)$/)).filter(Boolean).map(x=>[+x[1]*60+ +x[2],+x[3]*60+ +x[4]])}
+ if(!any||today===null)return null;
+ const hm=v=>String(Math.floor(v/60)%24).padStart(2,'0')+':'+String(v%60).padStart(2,'0');
+ if(today.some(([a,b])=>a===0&&b>=1440))return{open:true,until:null,h24:true};
+ for(const[a,b0]of today){const b=b0<=a?b0+1440:b0;if(mins>=a&&mins<b)return{open:true,until:hm(b)}}
+ const next=today.map(r=>r[0]).filter(a=>a>mins).sort((x,y)=>x-y)[0];return{open:false,opens:next!=null?hm(next):null}}
+const distKm=(a,b,c,d)=>{const R=6371,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
+function quickBtn(){const n=list().filter(x=>!x.d).length,b=$('quickGo');if(!b)return;b.hidden=!(n>=1&&n<=5)||!DB;b.textContent=`⚡ רק ${n} ${n===1?'מוצר':'מוצרים'}? מצאו סופר פתוח קרוב`}
+$('quickGo').addEventListener('click',()=>{if(!navigator.geolocation){toast('הטלפון לא תומך במיקום');return}
+ let el=document.getElementById('qsheet');if(!el){el=document.createElement('div');el.id='qsheet';el.className='sheet';document.body.appendChild(el);el.onclick=e=>{if(e.target===el||e.target.dataset.x)el.hidden=true}}
+ el.innerHTML='<div class="sheetin" style="text-align:center"><div style="font-size:44px">📍</div><h3 style="margin:4px 0">מחפשים סופרים קרובים…</h3><p class="hint">צריך לאשר גישה למיקום</p></div>';el.hidden=false;
+ navigator.geolocation.getCurrentPosition(async pos=>{const{latitude:la,longitude:lo}=pos.coords;
+  const q=`[out:json][timeout:15];(node["shop"~"supermarket|convenience"](around:3000,${la},${lo});way["shop"~"supermarket|convenience"](around:3000,${la},${lo}););out center tags 60;`;
+  let rows=[];try{const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});const j=await r.json();
+   rows=(j.elements||[]).map(e=>{const t=e.tags||{},y=e.lat??(e.center&&e.center.lat),x=e.lon??(e.center&&e.center.lon);if(y==null)return null;
+    return{name:t['name:he']||t.name||t.brand||'סופר',brand:t.brand||'',big:t.shop==='supermarket',lat:y,lon:x,km:distKm(la,lo,y,x),oh:ohNow(t.opening_hours)}}).filter(Boolean)}catch(e){}
+  if(!rows.length){el.innerHTML='<div class="sheetin" style="text-align:center"><h3>לא מצאנו סופרים קרובים</h3><p class="hint">אולי אין חיבור, או שהאזור לא ממופה. נסו שוב בעוד רגע.</p><button type="button" class="ghost" data-x="1" style="width:100%">סגירה</button></div>';return}
+  rows.sort((a,b)=>((b.oh&&b.oh.open)?1:0)-((a.oh&&a.oh.open)?1:0)||a.km-b.km);rows=rows.slice(0,6);
+  const st=o=>!o.oh?'<span style="color:var(--mute)">שעות לא ידועות</span>':o.oh.h24?'<b style="color:#1f8a4c">פתוח 24 שעות</b>':o.oh.open?`<b style="color:#1f8a4c">פתוח עד ${o.oh.until}</b>`:`<b style="color:#b3261e">סגור${o.oh.opens?' · נפתח ב־'+o.oh.opens:''}</b>`;
+  const n=list().filter(x=>!x.d).length;
+  el.innerHTML=`<div class="sheetin"><h3 style="margin:0 0 4px">⚡ קנייה מהירה · ${n} ${n===1?'מוצר':'מוצרים'}</h3><p class="hint" style="margin:0 0 10px">הסופרים הקרובים אליכם, הפתוחים קודם</p>`+rows.map(o=>`<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)"><div style="min-width:0"><b>${esc(o.name)}</b>${o.brand&&o.brand!==o.name?` <span class="hint">· ${esc(o.brand)}</span>`:''}<div style="font-size:14px">${o.km<1?Math.round(o.km*1000)+' מ׳':o.km.toFixed(1)+' ק״מ'} · ${st(o)}</div></div><a href="https://waze.com/ul?ll=${o.lat},${o.lon}&navigate=yes" target="_blank" rel="noopener" style="flex:none;background:#33ccff;color:#04324a;border-radius:12px;padding:10px 12px;font-weight:700;text-decoration:none">🚗 Waze</a></div>`).join('')+
+   '<p class="hint" style="font-size:12px;margin-top:8px">נתוני מיקום ושעות: OpenStreetMap. כדאי לוודא שעות לפני שיוצאים.</p><button type="button" class="ghost" data-x="1" style="width:100%">סגירה</button></div>'},
+  ()=>{el.innerHTML='<div class="sheetin" style="text-align:center"><h3>אין גישה למיקום</h3><p class="hint">כדי למצוא סופר קרוב צריך לאשר גישה למיקום בהגדרות הדפדפן.</p><button type="button" class="ghost" data-x="1" style="width:100%">סגירה</button></div>'},{enableHighAccuracy:false,timeout:12000,maximumAge:300000})});
 /* ---------- "is this the right one?" photo questions ---------- */
 let ASKS={},PHOTOS={},ASK_ID=null;const ASK_SEEN=new Set();
 const nhash=n=>{let h=5381;for(const c of String(n))h=((h<<5)+h+c.charCodeAt(0))>>>0;return 'p'+h.toString(36)};
