@@ -43,7 +43,22 @@ def ttoks(s):  # base tokens for the catalog name (no prefix-stripped duplicates
             t = t[1:]
         res.append(t)
     return res
+FINALS = str.maketrans('ךםןףץ', 'כמנפצ')
+def stem(t):
+    t = t.translate(FINALS)
+    if len(t) >= 5 and t[-1] == 'י':
+        t = t[:-1]
+    if len(t) >= 5 and t[-2:] in ('ות', 'ימ'):
+        return t[:-2]
+    if len(t) >= 4 and t[-1] in 'הת':
+        return t[:-1]
+    return t
+UNITS = {'גרם', 'גר', 'קג', 'ק"ג', 'ליטר', 'מל', 'יח', 'מ"ל', 'ל', 'ג', 'קילו', 'אריזה', 'מארז', 'ארוז', 'בתפזורת', 'שקיל', 'טרי', 'טריים', 'טריה'}
 def tmatch(t, itset, itstr):
+    if t not in itset and not any(ch.isdigit() for ch in t) and len(t) >= 4:
+        st = stem(t)
+        if any(stem(x) == st for x in itset):
+            return True
     if t in itset:
         return True
     if any(ch.isdigit() for ch in t):
@@ -59,13 +74,15 @@ def best_price(name, aisle, items):
     for it in items:
         first2 = it['ns'].split()[:2]
         f2 = set(first2) | {t[1:] for t in first2 if len(t) >= 4 and t[0] in 'הבול'}
-        if head not in f2 and not any(x.startswith(head) for x in first2 if len(head) >= 3):
+        if head not in f2 and stem(head) not in {stem(x) for x in f2} and not any(x.startswith(head) for x in first2 if len(head) >= 3):
             continue
         hit = sum(1 for t in ct if tmatch(t, it['ts'], it['ns']))
         sc = hit / len(ct)
         if sc < 0.67:
             continue
-        cands.append((sc, len(it['ns']), it))
+        words = [w for w in it['ns'].split() if not any(ch.isdigit() for ch in w) and w not in UNITS]
+        extra = max(0, len(words) - hit)
+        cands.append((sc, extra * 100 + len(it['ns']), it))
     if not cands:
         return None
     if aisle == 0 and any(c[2]['w'] for c in cands):

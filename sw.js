@@ -1,5 +1,5 @@
 /* Family shopping list: background worker for push notifications */
-const CACHE = 'shop-app-v35';
+const CACHE = 'shop-app-v36';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));

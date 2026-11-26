@@ -477,6 +477,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     <div id="listView" hidden>
     <div id="list"></div>
     <div class="total" id="total"></div>
+    <button type="button" id="cmpGo" hidden style="width:100%;margin:10px 0 0;min-height:52px;border:2px solid #1f8a4c;border-radius:16px;background:#eaf7ef;color:#156b3a;font:700 16px system-ui;cursor:pointer"></button>
     <button type="button" id="quickGo" hidden style="width:100%;margin:10px 0 0;min-height:56px;border:2px dashed #c27a00;border-radius:16px;background:#fff7e6;color:#8a5a00;font:700 17px system-ui;cursor:pointer"></button>
     <div class="tools">
       <button id="shopGo" type="button" class="shopgo">🛒 נכנסתי לסופר</button>
@@ -760,13 +761,19 @@ function prodArt(n){for(const[k,t,c,s,x]of PRODMAP)if(n.includes(k)&&PROD[t])ret
 
 const saleOf=(n,ch)=>{const e=CP[ch||CHAIN]&&CP[ch||CHAIN][n];return e&&e.s>0&&e.u>=Date.now()?e:null};
 const otherChain=n=>{for(const[ch,o]of Object.entries(CP))if(ch!==CHAIN&&o[n]&&o[n].p>0)return[o[n].p,ch];return null};
+/* real prices from the chains' transparency files (nightly prices.json) */
+let OFF={},OFFT=0;const OFFMAP={'שופרסל שלי':'שופרסל דיל','קרפור מרקט':'קרפור היפר'};
+const offChain=ch=>OFF[OFFMAP[ch]||ch];
+const offPrice=(n,ch)=>{const o=offChain(ch||CHAIN);const p=o&&o.items&&o.items[n]&&o.items[n].p>0?o.items[n].p:0;if(!p)return 0;const est=typeof REF!=='undefined'&&REF[n]?REF[n][0]:typeof EST!=='undefined'&&EST[n]?EST[n][0]:0;return est>0&&(p>est*3||p<est/3)?0:p};
+(async()=>{try{const r=await fetch('prices.json?d='+new Date().toISOString().slice(0,10));if(!r.ok)return;const j=await r.json();if(j&&j.chains){OFF=j.chains;OFFT=+j.updated||0;render();if(typeof SHOP!=='undefined'&&SHOP)shopRender()}}catch(e){}})();
 const resolve=(n,c)=>{const e=CP[CHAIN]&&CP[CHAIN][n];
  if(e&&e.s>0&&e.u>=Date.now())return[e.s,'sale'];
  if(e&&e.p>0)return[e.p,'memo'];
+ {const op=offPrice(n);if(op){const est=REF[n]?REF[n][0]:EST[n]?EST[n][0]:ROUGH[c!=null?c:(IDX[n]!=null?IDX[n]:14)];if(!(est>0)||(op<=est*3&&op>=est/3))return[op,'official']}}
  const o=otherChain(n);if(o)return[o[0],'other'];
  return MEMO[n]>0?[MEMO[n],'other']:REF[n]?[REF[n][0],'ref']:EST[n]?[EST[n][0],'est']:[ROUGH[c!=null?c:(IDX[n]!=null?IDX[n]:14)],'rough']};
 const dshort=u=>new Date(u).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
-const SPREAD={sale:.03,ref:.05,memo:.08,other:.15,me:0,est:.25,rough:.45};
+const SPREAD={official:.03,sale:.03,ref:.05,memo:.08,other:.15,me:0,est:.25,rough:.45};
 /* ---------- recipes: ingredients for 4 servings, quantities in packs/units as bought ---------- */
 const RECIPES=[
  ['שקשוקה','🍳','עגבניות:2|בצל:1|שום:1|פלפל אדום:1|ביצים L:1|רסק עגבניות:1|פפריקה:1|כמון:1|לחם פרוס:1'],
@@ -894,7 +901,7 @@ function openPrice(n){const[v,k]=resolve(n);const e=(CP[CHAIN]&&CP[CHAIN][n])||{
  $('pdel').hidden=!CUSTOM.has(n);$('pn').textContent=n;$('pch').textContent=CHAIN;$('pv').value=e.p||(k==='ref'?v:'');$('pv').placeholder=String(e.p||v);
  $('pson').checked=!!sl;$('pbox').hidden=!sl;$('ps').value=sl?sl.s:'';
  const def=new Date(Date.now()+6*864e5);$('pu').value=(sl?new Date(sl.u):def).toISOString().slice(0,10);
- $('ph').textContent=sl?`במבצע עד ${dshort(sl.u)}`:k==='memo'?'המחיר השמור שלכם ב'+CHAIN:k==='other'?'כרגע מחיר מרשת אחרת':k==='ref'?'מחיר מסקר או בפיקוח':'כרגע הערכה בלבד. הקלידו את המחיר מהמדף';
+ $('ph').textContent=sl?`במבצע עד ${dshort(sl.u)}`:k==='official'?`✓ מחיר אמיתי מ${CHAIN} (${(offChain(CHAIN).items[n]||{}).n||''}) · מתעדכן כל לילה`:k==='memo'?'המחיר השמור שלכם ב'+CHAIN:k==='other'?'כרגע מחיר מרשת אחרת':k==='ref'?'מחיר מסקר או בפיקוח':'כרגע הערכה בלבד. הקלידו את המחיר מהמדף';
  $('psheet').hidden=false;setTimeout(()=>$('pv').focus(),30)}
 function closePrice(){$('psheet').hidden=true}
 function annShow(v){let el=document.getElementById('ann');if(el)el.remove();if(!v||!(+v.t>0)||typeof v.body!=='string')return;
@@ -1000,6 +1007,7 @@ function sub(x){
  if(x.src==='ref'&&r)bits.push(r[1]+' · '+(/פיקוח/.test(r[2])?'בפיקוח':'סקר '+(r[2].match(/(\S+ 2026)/)||['',''])[1]));
  else if(x.src==='sale'){const e=saleOf(x.n);bits.push('🏷️ מבצע עד '+dshort(e.u)+(e.p?' · במקום '+money(e.p):''))}
  else if(x.src==='memo')bits.push('מחיר שמור ב'+CHAIN);
+ else if(x.src==='official')bits.push('✓ מחיר אמיתי ב'+CHAIN);
  else if(x.src==='other'){const o=otherChain(x.n);bits.push(o?'מחיר מ'+o[1]:'מחיר שמור')}
  else if(x.src==='rough')bits.push('הערכה גסה');
  else if(x.src==='est'&&EST[x.n])bits.push('הערכה · '+EST[x.n][1]);
@@ -1146,7 +1154,22 @@ function ohNow(oh,d=new Date()){ // returns {open:bool, until:'HH:MM'|null, open
 const MAINCH=[['רמי לוי',['רמי לוי','rami lev']],['שופרסל',['שופרסל','shufersal']],['אושר עד',['אושר עד','osher ad']],['יוחננוף',['יוחננוף','yochananof','yohananof']],['ויקטורי',['ויקטורי','victory']],['קרפור',['קרפור','carrefour','יינות ביתן','yeinot bitan','מגה בעיר','mega']],['מחסני השוק',['מחסני השוק','machsane']],['טיב טעם',['טיב טעם','tiv taam']],['יש חסד',['יש חסד','yesh hesed','יש בשכונה']],['חצי חינם',['חצי חינם','hatzi hinam']],['סלאח דבאח',['סלאח','salah dab']],['קשת טעמים',['קשת טעמים','keshet']],['יוניברס',['יוניברס','universe']],['נטו',['נטו ','neto']],['קינג סטור',['קינג סטור','king store']],['AM:PM',['am:pm','am pm','ampm']],['סופר יודה',['סופר יודה','super yuda']],['פרש מרקט',['פרש מרקט','fresh market']],['ברכל',['ברכל','barkal']],['זול ובגדול',['זול ובגדול']],['סטופ מרקט',['סטופ מרקט','stop market']]];
 function chainOf(t){const s=((t.brand||'')+' '+(t.name||'')+' '+(t['name:he']||'')+' '+(t['name:en']||'')+' '+(t.operator||'')).toLowerCase();for(const[c,al]of MAINCH)if(al.some(a=>s.includes(a.toLowerCase())))return c;return''}
 const distKm=(a,b,c,d)=>{const R=6371,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
-function quickBtn(){const n=list().filter(x=>!x.d).length,b=$('quickGo');if(!b)return;b.hidden=!(n>=1&&n<=5);b.textContent=`⚡ רק ${n} ${n===1?'מוצר':'מוצרים'}? מצאו סופר פתוח קרוב`}
+function cmpCalc(){const open=list().filter(x=>!x.d);const res=[];
+ for(const ch of Object.keys(OFF)){let sum=0,got=0;open.forEach(x=>{const op=offPrice(x.n,ch);if(op){sum+=op*x.q;got++}else sum+=(+x.p||0)*x.q});res.push({ch,sum,got})}
+ return{open,res:res.filter(r=>r.got>0).sort((a,b)=>a.sum-b.sum)}}
+function cmpBtn(){const b=$('cmpGo');if(!b)return;const{open,res}=cmpCalc();if(open.length<2||res.length<2){b.hidden=true;return}
+ b.hidden=false;const cur=res.find(r=>r.ch===(OFFMAP[CHAIN]||CHAIN)),best=res[0];
+ b.textContent=cur&&best.ch!==cur.ch&&cur.sum-best.sum>=1?`💰 ב${best.ch} הרשימה זולה ב־${money(cur.sum-best.sum)} · להשוואה`:`💰 השוואת הרשימה בין ${res.length} רשתות`}
+$('cmpGo').addEventListener('click',()=>{const{open,res}=cmpCalc();let el=document.getElementById('cmpsheet');if(!el){el=document.createElement('div');el.id='cmpsheet';el.className='sheet';document.body.appendChild(el)}
+ const max=res[res.length-1].sum,cur=OFFMAP[CHAIN]||CHAIN;
+ el.innerHTML=`<div class="sheetin"><h3 style="margin:0 0 4px">💰 כמה הרשימה עולה בכל רשת</h3><p class="hint" style="margin:0 0 10px">${open.length} מוצרים · מחירים אמיתיים מקובצי השקיפות של הרשתות, סניף אחד לכל רשת${OFFT?' · עודכן '+new Date(OFFT*1000).toLocaleDateString('he-IL'):''}</p>`+
+  res.map((r,i)=>`<button type="button" data-ch="${esc(r.ch)}" style="display:block;width:100%;text-align:start;background:${r.ch===cur?'var(--acc2,#fde8e4)':'transparent'};border:0;border-top:1px solid var(--line);padding:10px 4px;font:inherit;color:inherit;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px"><b>${i===0?'🏆 ':''}${esc(r.ch)}${r.ch===cur?' · שלכם':''}</b><b>${money(r.sum)}</b></div>
+   <div style="height:8px;border-radius:4px;background:var(--line);margin:6px 0 4px;overflow:hidden"><i style="display:block;height:100%;width:${Math.max(8,Math.round(r.sum/max*100))}%;background:${i===0?'#1f8a4c':'#c9b9a3'}"></i></div>
+   <span class="hint" style="font-size:12px">${r.got}/${open.length} מוצרים במחיר אמיתי${r.got<open.length?' · השאר לפי הערכה':''}</span></button>`).join('')+
+  `<p class="hint" style="font-size:12px;margin-top:10px">לחיצה על רשת מעבירה אליה את המחירים ברשימה. ההתאמה בין המוצרים לקטלוג נעשית לפי השם, ולכן לפעמים היא לא מדויקת.</p><button type="button" class="ghost" id="cmpX" style="width:100%">סגירה</button></div>`;
+ el.hidden=false;el.onclick=e=>{if(e.target===el||e.target.id==='cmpX'){el.hidden=true;return}const b=e.target.closest('[data-ch]');if(!b)return;
+  const ch=b.dataset.ch;if(CHAINS.some(c=>c[0]===ch)||OTHER.includes(ch)){CHAIN=ch;$('chain').value=CHAIN;pushChain();render();toast('מציג מחירים של '+CHAIN)}el.hidden=true}});
+function quickBtn(){try{cmpBtn()}catch(e){}const n=list().filter(x=>!x.d).length,b=$('quickGo');if(!b)return;b.hidden=!(n>=1&&n<=5);b.textContent=`⚡ רק ${n} ${n===1?'מוצר':'מוצרים'}? מצאו סופר פתוח קרוב`}
 $('nearGo').addEventListener('click',()=>$('quickGo').click());
 $('quickGo').addEventListener('click',()=>{if(!navigator.geolocation){toast('הטלפון לא תומך במיקום');return}
  let el=document.getElementById('qsheet');if(!el){el=document.createElement('div');el.id='qsheet';el.className='sheet';document.body.appendChild(el);el.onclick=e=>{if(e.target===el||e.target.dataset.x)el.hidden=true}}
@@ -1414,7 +1437,7 @@ render();status('מתחבר לרשימה המשותפת…');
   const next={};
   snap.docs.forEach(d=>{const v=d.data()||{};if(typeof v.n!=='string')return;
    next[d.id]={n:v.n.slice(0,60),q:Math.max(1,Math.min(99,+v.q||1)),c:Number.isInteger(v.c)&&v.c>=0&&v.c<AISLES.length?v.c:AISLES.length-1,
-    d:!!v.d,p:+v.p>0?+v.p:'',bump:+v.bump||0,src:['ref','memo','me','est','rough'].includes(v.src)?v.src:'',note:typeof v.note==='string'?v.note.slice(0,80):'',add:typeof v.add==='string'?v.add.slice(0,80):'',by:typeof v.by==='string'?v.by.slice(0,80):'',oos:+v.oos>0?+v.oos:0,sub:typeof v.sub==='string'?v.sub.slice(0,80):'',u:!!v.u}});
+    d:!!v.d,p:+v.p>0?+v.p:'',bump:+v.bump||0,src:['ref','memo','me','est','rough','official'].includes(v.src)?v.src:'',note:typeof v.note==='string'?v.note.slice(0,80):'',add:typeof v.add==='string'?v.add.slice(0,80):'',by:typeof v.by==='string'?v.by.slice(0,80):'',oos:+v.oos>0?+v.oos:0,sub:typeof v.sub==='string'?v.sub.slice(0,80):'',u:!!v.u}});
   ITEMS=next;status();render();
  },()=>{clearTimeout(timer);status('החיבור לרשימה המשותפת נותק. רעננו את הדף')});
  db.doc('settings/main').onSnapshot(d=>{const v=d.exists?d.data():null;
