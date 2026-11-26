@@ -72,6 +72,14 @@ BAD = {'מיובש', 'מיובשים', 'מיובשת', 'בסירופ', 'סירו
        'סוכרה', 'נרות', 'למאור', 'טורטיות', 'טורטיה', 'תבנית', 'חליטת', 'חליטה', 'מקלות', 'ממרח', 'סלט', 'אורגני', 'ללג', 'גלוטן',
        'קפוא', 'קפואה', 'קפואים', 'בוט', 'עשירייה', 'מארז', 'שישיה', 'שישית', 'תריס', 'פחיות'}
 SUFFIX_OK = {'', 'ים', 'ות', 'ה', 'י', 'ת', 'יות', 'יים'}
+# per-catalog-item negatives: words in a store item that mean it is a different product
+NEG = {
+ 'אשל': ('דבש',), 'מטרנה': ('דייס', 'דייסת', 'סולת', 'אורז', 'חטיף'),
+ 'סימילק': ('דייס', 'סולת'), 'אנטריקוט': ('בורגר', 'נקניק', 'קפוא', 'המבורגר'),
+ 'המבורגרים': ('לחמני', 'לחמנ'), 'סלמון': ('בשמן', 'קופס', 'טחון', 'קנול', 'ממרח', 'פטה'),
+ 'שניצל': ('לחמני',), 'תמרים': ('כבוש',), 'אבוקדו': ('שמן',),
+}
+
 def best_price(name, aisle, items):
     ct = ttoks(name)
     if len(ct) > 1:
@@ -86,6 +94,9 @@ def best_price(name, aisle, items):
         if head not in f2 and stem(head) not in {stem(x) for x in f2} and not any(x.startswith(head) and x[len(head):] in SUFFIX_OK for x in first2 if len(head) >= 3):
             continue
         if any(w in BAD and w not in ct for w in it['ns'].split()):
+            continue
+        neg = NEG.get(head) or NEG.get(name)
+        if neg and any(bad in it['ns'] for bad in neg):
             continue
         hit = sum(1 for t in ct if tmatch(t, it['ts'], it['ns']))
         sc = hit / len(ct)
