@@ -230,7 +230,14 @@ def main():
                 promos = parse_promos(pf[0]) if pf else {}
                 np = 0
                 for n, m in got.items():
-                    hits = [promos[k] for k in m['_ks'] if k in promos]
+                    nst = {stem(t) for t in ttoks(n) if len(t) >= 2}
+                    def _ok(pr):
+                        if 'בקני' in pr['d'] or pr['q'] > 6:
+                            return False
+                        dst = {stem(t) for t in toks(pr['d'])}
+                        pre = {t[:4] for t in ttoks(n) if len(t) >= 4}
+                        return bool(nst & dst) or any(t in pr['d'] for t in ttoks(n) if len(t) >= 3) or any(t[:4] in pre for t in toks(pr['d']) if len(t) >= 4)
+                    hits = [promos[k] for k in m['_ks'] if k in promos and _ok(promos[k])]
                     if hits:
                         b0 = min(hits, key=lambda x: x['p'] / x['q'])
                         if b0['p'] / b0['q'] < m['p'] * 0.97:
