@@ -764,7 +764,7 @@ const otherChain=n=>{for(const[ch,o]of Object.entries(CP))if(ch!==CHAIN&&o[n]&&o
 /* real prices from the chains' transparency files (nightly prices.json) */
 let OFF={},OFFT=0;const OFFMAP={'שופרסל שלי':'שופרסל דיל','קרפור מרקט':'קרפור היפר'};
 const offChain=ch=>OFF[OFFMAP[ch]||ch];
-const offPrice=(n,ch)=>{const o=offChain(ch||CHAIN);const p=o&&o.items&&o.items[n]&&o.items[n].p>0?o.items[n].p:0;if(!p)return 0;const est=typeof REF!=='undefined'&&REF[n]?REF[n][0]:typeof EST!=='undefined'&&EST[n]?EST[n][0]:0;return est>0&&(p>est*3||p<est/3)?0:p};
+const offPrice=(n,ch)=>{const o=offChain(ch||CHAIN);const p=o&&o.items&&o.items[n]&&o.items[n].p>0?o.items[n].p:0;if(!p)return 0;const est=typeof REF!=='undefined'&&REF[n]?REF[n][0]:typeof EST!=='undefined'&&EST[n]?EST[n][0]:0;const kg=typeof REF!=='undefined'&&REF[n]&&/ק[״"]ג/.test(REF[n][1]||'');return est>0&&(p>est*3||(!kg&&p<est/3))?0:p};
 let OFFCH={};
 const chgOf=(n,ch)=>{const m=OFFCH[OFFMAP[ch||CHAIN]||ch||CHAIN];return m&&m[n]||null};
 async function loadOff(){try{const r=await fetch('prices.json?h='+Math.floor(Date.now()/36e5));if(!r.ok)return;const j=await r.json();if(!j||!j.chains)return;
@@ -775,7 +775,7 @@ loadOff();setInterval(()=>{if(document.visibilityState==='visible')loadOff()},30
 const resolve=(n,c)=>{const e=CP[CHAIN]&&CP[CHAIN][n];
  if(e&&e.s>0&&e.u>=Date.now())return[e.s,'sale'];
  if(e&&e.p>0)return[e.p,'memo'];
- {const op=offPrice(n);if(op){const est=REF[n]?REF[n][0]:EST[n]?EST[n][0]:ROUGH[c!=null?c:(IDX[n]!=null?IDX[n]:14)];if(!(est>0)||(op<=est*3&&op>=est/3))return[op,'official']}}
+ {const op=offPrice(n);if(op){const est=REF[n]?REF[n][0]:EST[n]?EST[n][0]:ROUGH[c!=null?c:(IDX[n]!=null?IDX[n]:14)];if(!(est>0)||(op<=est*3&&(op>=est/3||(REF[n]&&/ק[״"]ג/.test(REF[n][1]||'')))))return[op,'official']}}
  const o=otherChain(n);if(o)return[o[0],'other'];
  return MEMO[n]>0?[MEMO[n],'other']:REF[n]?[REF[n][0],'ref']:EST[n]?[EST[n][0],'est']:[ROUGH[c!=null?c:(IDX[n]!=null?IDX[n]:14)],'rough']};
 const dshort=u=>new Date(u).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
