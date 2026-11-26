@@ -65,8 +65,17 @@ def tmatch(t, itset, itstr):
         return False
     return len(t) >= 3 and (' ' + t) in (' ' + itstr)
 
+CT_STOP = {'בקופסה', 'בקופסא', 'קופסה', 'קופסא', 'טרי', 'טריים', 'טריה'}
+# words that turn a basic product into something else (dried apple, candy, spice mix...) unless the catalog name asks for them
+BAD = {'מיובש', 'מיובשים', 'מיובשת', 'בסירופ', 'סירופ', 'חתוך', 'חתוכים', 'מעושן', 'מעושנת', 'מתובל', 'מתובלים', 'במרינדה', 'מרינדה',
+       'תבליני', 'תבלין', 'טבעות', 'אבקה', 'רסק', 'שימורים', 'שרי', 'מהצומח', 'ביונד', 'צמחי', 'דיאט', 'סוכריות', 'סוכריה', 'סוכרזית',
+       'סוכרה', 'נרות', 'למאור', 'טורטיות', 'טורטיה', 'תבנית', 'חליטת', 'חליטה', 'מקלות', 'ממרח', 'סלט', 'אורגני', 'ללג', 'גלוטן',
+       'קפוא', 'קפואה', 'קפואים', 'בוט', 'עשירייה', 'מארז', 'שישיה', 'שישית', 'תריס', 'פחיות'}
+SUFFIX_OK = {'', 'ים', 'ות', 'ה', 'י', 'ת', 'יות', 'יים'}
 def best_price(name, aisle, items):
     ct = ttoks(name)
+    if len(ct) > 1:
+        ct = [t for t in ct if t not in CT_STOP] or ct
     if not ct:
         return None
     head = ct[0]
@@ -74,7 +83,9 @@ def best_price(name, aisle, items):
     for it in items:
         first2 = it['ns'].split()[:2]
         f2 = set(first2) | {t[1:] for t in first2 if len(t) >= 4 and t[0] in 'הבול'}
-        if head not in f2 and stem(head) not in {stem(x) for x in f2} and not any(x.startswith(head) for x in first2 if len(head) >= 3):
+        if head not in f2 and stem(head) not in {stem(x) for x in f2} and not any(x.startswith(head) and x[len(head):] in SUFFIX_OK for x in first2 if len(head) >= 3):
+            continue
+        if any(w in BAD and w not in ct for w in it['ns'].split()):
             continue
         hit = sum(1 for t in ct if tmatch(t, it['ts'], it['ns']))
         sc = hit / len(ct)
@@ -85,6 +96,9 @@ def best_price(name, aisle, items):
         cands.append((sc, extra * 100 + len(it['ns']), it))
     if not cands:
         return None
+    multi = lambda c: bool(re.search(r'\d\s*[*x×]\s*\d', c[2]['n']))
+    if not re.search(r'\d', name) and any(not multi(c) for c in cands):
+        cands = [c for c in cands if not multi(c)]
     if aisle == 0 and any(c[2]['w'] for c in cands):
         cands = [c for c in cands if c[2]['w']]
     if any(c[2]['ns'].startswith(head) for c in cands):  # e.g. ג'ינג'ר should not match "חליטת ג'ינג'ר"
