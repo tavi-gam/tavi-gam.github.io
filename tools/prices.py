@@ -18,7 +18,7 @@ CHAINS = {  # app chain name -> scraper
     'חצי חינם': 'HAZI_HINAM',
     'קינג סטור': 'KING_STORE',
 }
-ONLY = [a for a in sys.argv[1:] if a in CHAINS] or list(CHAINS)
+ONLY = [c for c, v in CHAINS.items() if v in sys.argv[1:]] or list(CHAINS)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT = json.load(open(os.path.join(ROOT, 'tools', 'catalog.json'), encoding='utf-8'))
@@ -109,7 +109,8 @@ def fetch(chain, scr):
     out = os.path.join(ROOT, 'dumps', scr)
     os.makedirs(out, exist_ok=True)
     before = set(glob.glob(out + '/**/*', recursive=True))
-    s = cls(file_output=None) if 'file_output' in cls.__init__.__code__.co_varnames else cls()
+    from il_supermarket_scarper.engines import engine as _eng
+    s = cls(file_output=_eng.DiskFileOutput(storage_path=out))
     try:
         s.scrape(limit=1, files_types=['PRICE_FULL_FILE'], min_size=200_000, filter_null=True, filter_zero=True)
     except TypeError:
