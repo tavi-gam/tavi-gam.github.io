@@ -345,6 +345,10 @@ const user={id:async()=>cfg.uid,isOwner:async()=>false,canEdit:async()=>true,can
 
 /* ---- start after joining ---- */
 /* ---- trial / subscription ---- */
+(()=>{const q=new URLSearchParams(location.search).get('paid');if(q==null)return;try{history.replaceState(null,'',location.pathname)}catch(e){}
+ const t=document.createElement('div');t.style.cssText='position:fixed;left:12px;right:12px;bottom:18px;z-index:2147483600;background:'+(q==='1'?'#1f8a4c':'#555')+';color:#fff;border-radius:16px;padding:14px 16px;text-align:center;font:700 16px system-ui;box-shadow:0 10px 30px rgba(0,0,0,.3)';
+ t.textContent=q==='1'?'✅ התשלום התקבל! המנוי נפתח תוך כמה שניות':'התשלום בוטל · אפשר לנסות שוב מתי שרוצים';const add=()=>document.body?document.body.appendChild(t):setTimeout(add,200);add();setTimeout(()=>t.remove(),7000);
+ if(q==='1'){let n=0;const iv=setInterval(()=>{if(++n>8)return clearInterval(iv);try{cfg&&cfg.code&&billing()}catch(e){}},3000)}})();
 async function billing(){let b=null;try{b=await rpc('shop_billing',{code:cfg.code})}catch(e){if(window.__billState===undefined)window.__billState=null;return}
  window.__billState=b?b.state:null;window.__bill=b;window.__billDays=b&&b.state==='trial'?Math.max(0,Math.ceil((new Date(b.trial_until)-Date.now())/864e5)):null;
  let pw=document.getElementById('paywall'),tb=document.getElementById('trialbar');
@@ -367,6 +371,7 @@ function showPay(b,locked){const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':
    <button type="button" data-plan="y" style="border:3px solid #bdb5a6;background:#fff;color:#222;border-radius:16px;padding:12px 8px;font:inherit;cursor:pointer;position:relative"><span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#1f8a4c;color:#fff;border-radius:99px;padding:2px 10px;font:700 12px system-ui;white-space:nowrap">משתלם</span><div style="font:700 15px system-ui">שנתי</div><div style="font:800 20px system-ui;color:inherit;margin-top:4px">${E(b.price_year||'')}</div></button>
   </div>
   <p id="planNote" style="font-size:15px;margin:6px 0"></p>
+  <button type="button" id="growPay" hidden style="width:100%;min-height:56px;margin:6px 0 2px;border:0;border-radius:14px;background:#1d2433;color:#fff;font:800 18px system-ui;cursor:pointer">💳 לתשלום מאובטח · ביט או אשראי</button><p id="growNote" hidden style="font-size:13px;margin:4px 0 8px;color:#374151!important">המנוי נפתח אוטומטית מיד אחרי התשלום</p><p id="growOr" hidden style="font-size:14px;margin:10px 0 0;color:#374151!important">או בהעברה ידנית:</p>
   <p style="background:#efe6d6;border:1px solid #d9cdb8;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;white-space:pre-wrap;margin:12px 0">${E(b.payinfo)}</p>
   <p style="font-size:15px;margin:8px 0">כתבו בהערה של ההעברה: <b id="noteTxt" style="background:#fde8e4;border-radius:8px;padding:2px 8px;display:inline-block"></b></p>
   <div style="display:flex;gap:10px;margin-top:14px"><button type="button" id="payChk" style="flex:1;min-height:50px;border:0;border-radius:14px;background:#1f8a4c;color:#fff;font:700 17px system-ui">שילמתי · לבדוק שוב</button>${locked?'':'<button type="button" id="payX" style="flex:1;min-height:50px;border:2px solid #e6dfd2;border-radius:14px;background:transparent;font:600 17px system-ui">אחר כך</button>'}</div>
@@ -374,7 +379,10 @@ function showPay(b,locked){const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':
   ${locked?'<button type="button" id="payOut" style="margin-top:12px;background:none;border:0;color:#374151;text-decoration:underline;font:15px system-ui">יציאה / כניסה עם קוד אחר</button>':''}</div>`;
  const pick=pl=>{pw.querySelectorAll('[data-plan]').forEach(x=>{const on=x.dataset.plan===pl;x.style.borderColor=on?'#d8452e':'#bdb5a6';x.style.background=on?'#d8452e':'#fff';x.style.color=on?'#fff':'#222';x.style.boxShadow=on?'0 6px 16px rgba(216,69,46,.35)':'none'});
   pw.querySelector('#planNote').textContent=pl==='y'?'תשלום אחד לשנה שלמה':'מתחדש כל חודש';pw.querySelector('#noteTxt').textContent=cfg.code+' '+(pl==='y'?'שנתי':'חודשי')};
- pw.querySelectorAll('[data-plan]').forEach(x=>x.onclick=()=>pick(x.dataset.plan));pick('m');
+ let PL='m';pw.querySelectorAll('[data-plan]').forEach(x=>x.onclick=()=>{PL=x.dataset.plan;pick(PL)});pick('m');
+ const GURL=SB_URL+'/functions/v1/grow',gb=pw.querySelector('#growPay');
+ fetch(GURL+'?a=status').then(r=>r.json()).then(j=>{if(j&&j.ready){gb.hidden=false;pw.querySelector('#growNote').hidden=false;pw.querySelector('#growOr').hidden=false}}).catch(()=>{});
+ gb.onclick=async()=>{gb.disabled=true;gb.textContent='פותח דף תשלום…';try{const r=await fetch(GURL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:cfg.code,plan:PL})});const j=await r.json();if(j&&j.url){location.href=j.url;return}}catch(e){}gb.disabled=false;gb.textContent='לא הצלחנו לפתוח · נסו שוב או העבירו ידנית'};
  pw.querySelector('#payChk').onclick=async()=>{await billing();const st=document.getElementById('paywall');if(st&&locked){st.querySelector('#payChk').textContent='עוד לא הופעל · נסו שוב בעוד כמה דקות'}};
  const x=pw.querySelector('#payX');if(x)x.onclick=()=>pw.remove();
  pw.querySelector('#payRef').onclick=()=>{if(window.openRef){pw.style.display='none';openRef();const r=document.getElementById('refsheet');const back=()=>{if(r.hidden){pw.style.display='flex';clearInterval(iv)}};const iv=setInterval(back,400)}};
