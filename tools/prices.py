@@ -57,7 +57,9 @@ def best_price(name, aisle, items):
     head = ct[0]
     cands = []
     for it in items:
-        if not tmatch(head, it['ts'], it['ns']):
+        first2 = it['ns'].split()[:2]
+        f2 = set(first2) | {t[1:] for t in first2 if len(t) >= 4 and t[0] in 'הבול'}
+        if head not in f2 and not any(x.startswith(head) for x in first2 if len(head) >= 3):
             continue
         hit = sum(1 for t in ct if tmatch(t, it['ts'], it['ns']))
         sc = hit / len(ct)
@@ -66,8 +68,11 @@ def best_price(name, aisle, items):
         cands.append((sc, len(it['ns']), it))
     if not cands:
         return None
+    if aisle == 0 and any(c[2]['w'] for c in cands):
+        cands = [c for c in cands if c[2]['w']]
     top = max(c[0] for c in cands)
-    pool = sorted([c for c in cands if c[0] == top], key=lambda c: c[1])[:7]
+    lead = lambda c: 0 if c[2]['ns'].startswith(head) else 1
+    pool = sorted([c for c in cands if c[0] == top], key=lambda c: (lead(c), c[1]))[:7]
     prices = sorted(c[2]['p'] for c in pool)
     med = statistics.median(prices)
     rep = min(pool, key=lambda c: abs(c[2]['p'] - med))[2]
@@ -98,8 +103,9 @@ def parse(path):
             price = float(f.get('itemprice') or f.get('price') or 0)
         except ValueError:
             price = 0
+        w = (f.get('bisweighted') or f.get('isweighted') or '0').strip() in ('1', 'true')
         if name and 0.3 <= price <= 1000:
-            items.append({'n': name, 'p': price, 'code': f.get('itemcode', ''),
+            items.append({'n': name, 'p': price, 'code': f.get('itemcode', ''), 'w': w,
                           'ns': norm(name), 'ts': set(toks(name))})
         el.clear()
     return items, store
@@ -124,8 +130,7 @@ def fetch(chain, scr):
     elif hasattr(r, '__next__'):
         r = list(r)
     print(f'[{chain}] result: {str(r)[:600]}')
-    files = [f for f in glob.glob(ROOT + '/dumps/**/*', recursive=True) if os.path.isfile(f) and f not in before]
-    files += [f for f in glob.glob(ROOT + '/**/*PriceFull*', recursive=True) if os.path.isfile(f) and f not in files and '/.git/' not in f]
+    files = [f for f in glob.glob(out + '/**/*', recursive=True) if os.path.isfile(f) and f not in before]
     files = [f for f in files if 'pricefull' in os.path.basename(f).lower()]
     return sorted(files, key=os.path.getsize, reverse=True)
 
