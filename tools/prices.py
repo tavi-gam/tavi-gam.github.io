@@ -111,10 +111,19 @@ def fetch(chain, scr):
     before = set(glob.glob(out + '/**/*', recursive=True))
     from il_supermarket_scarper.engines import engine as _eng
     s = cls(file_output=_eng.DiskFileOutput(storage_path=out))
-    try:
-        s.scrape(limit=1, files_types=['PRICE_FULL_FILE'], min_size=200_000, filter_null=True, filter_zero=True)
-    except TypeError:
-        s.scrape(limit=1, files_types=['PRICE_FULL_FILE'])
+    import inspect
+    r = s.scrape(limit=1, files_types=['PRICE_FULL_FILE'], min_size=200_000, filter_null=True, filter_zero=True)
+    print(f'[{chain}] scrape returned {type(r).__name__}')
+    if inspect.isasyncgen(r) or inspect.iscoroutine(r):
+        import asyncio
+        async def _drain(x):
+            if inspect.iscoroutine(x):
+                return await x
+            return [y async for y in x]
+        r = asyncio.run(_drain(r))
+    elif hasattr(r, '__next__'):
+        r = list(r)
+    print(f'[{chain}] result: {str(r)[:600]}')
     files = [f for f in glob.glob(ROOT + '/dumps/**/*', recursive=True) if os.path.isfile(f) and f not in before]
     files += [f for f in glob.glob(ROOT + '/**/*PriceFull*', recursive=True) if os.path.isfile(f) and f not in files and '/.git/' not in f]
     files = [f for f in files if 'pricefull' in os.path.basename(f).lower()]
