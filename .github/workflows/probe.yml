@@ -1,0 +1,8 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in https://prices.carrefour.co.il/ https://prices.mega.co.il/ https://www.victoryonline.co.il/ https://shop.hazi-hinam.co.il/Prices; do echo "== $u"; curl -s -m 25 -o /tmp/o -w '%{http_code} %{size_download}\n' "$u"; head -c 300 /tmp/o | tr '\n' ' '; echo; grep -o 'const files = \[.\{0,200\}' /tmp/o | head -c 300; echo; done
