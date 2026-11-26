@@ -47,6 +47,7 @@ button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:
   <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="q" id="q" placeholder="חיפוש לפי שם או קוד"><button class="ghost" id="theme">🌙</button><a class="ghost" href="nihul-40b5b0.html" style="display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:2px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;font-weight:600">⚙️ דף מנהל</a><button class="ghost" id="ref">🔄 רענון</button><button class="ghost" id="out">יציאה</button></div>
  </div>
  <div class="stats" id="stats"></div>
+ <div class="card" id="health" hidden style="border-width:2px"></div>
  <div class="card" id="renew" hidden style="border:2px solid #c27a00"></div>
  <div style="display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap"><button class="ghost" id="fOn" aria-pressed="true">🟢 מחוברים עכשיו</button><button class="ghost" id="fAll" aria-pressed="false">👨‍👩‍👧 כל המשפחות (מנויים)</button><button class="ghost" id="fSet">💳 מחיר ופרטי תשלום</button><button class="ghost" id="fPr">📊 מחירי רשתות</button></div>
  <div class="card" id="prCard" hidden><h2>📊 מחירים אמיתיים לפי רשת</h2><div class="mut" id="prUpd" style="margin-bottom:8px"></div>
@@ -117,6 +118,18 @@ $('fams').addEventListener('click',onBill);$('renew').addEventListener('click',o
 const mode=m=>{MODE=m;$('fOn').setAttribute('aria-pressed',m==='on');$('fAll').setAttribute('aria-pressed',m==='all');DATA&&draw()};
 $('fOn').onclick=()=>mode('on');$('fAll').onclick=()=>mode('all');
 const PR_ALL=['רמי לוי','שופרסל דיל','אושר עד','יוחננוף','טיב טעם','סלאח דבאח','קשת טעמים','קינג סטור','ויקטורי','קרפור היפר','מחסני השוק','חצי חינם'];
+async function loadHealth(){const el=$('health');
+ try{const j=await(await fetch('prices.json?t='+Date.now())).json();const ch=j.chains||{},now=Date.now()/1000;
+  const pres=Object.keys(ch).filter(n=>Object.keys(ch[n].items||{}).length>0);
+  const fresh=pres.filter(n=>now-(ch[n].t||0)<28*3600);
+  const hrs=j.updated?Math.round((now-j.updated)/3600):999;
+  const when=j.updated?new Date(j.updated*1000).toLocaleString('he-IL',{weekday:'short',hour:'2-digit',minute:'2-digit',day:'numeric',month:'numeric'}):'—';
+  let bg,bd,txt;
+  if(hrs>28||!pres.length){bg='#fdecea';bd='#b3261e';txt=`⚠️ <b>המחירים לא התעדכנו כבר ${hrs} שעות.</b> ייתכן שהעדכון האוטומטי של הבוקר נתקע. כדאי לבדוק את ההרצה האחרונה ב־GitHub Actions (prices). המחירים שמוצגים למשפחות הם מ־${when}.`;}
+  else if(fresh.length<pres.length){bg='#fff6e5';bd='#c27a00';txt=`🟡 המחירים עודכנו הבוקר (${when}), אבל רק ${fresh.length} מתוך ${pres.length} רשתות התרעננו היום. השאר מציגות מחיר מאתמול — ייתכן שרשת שינתה פורמט.`;}
+  else{bg='#eaf7ef';bd='#1f8a4c';txt=`✅ המחירים והמבצעים עודכנו הבוקר (${when}). כל ${pres.length} הרשתות הפעילות התרעננו.`;}
+  el.style.background=bg;el.style.borderColor=bd;el.innerHTML=`<div style="display:flex;gap:10px;align-items:flex-start"><div style="font-size:15px;line-height:1.5;color:#111827">${txt}</div></div>`;el.hidden=false;
+ }catch(e){el.style.background='#fff6e5';el.style.borderColor='#c27a00';el.innerHTML='<div style="color:#111827">🟡 לא הצלחתי לבדוק את מצב עדכון המחירים כרגע.</div>';el.hidden=false;}}
 $('fPr').onclick=async()=>{const c=$('prCard');c.hidden=!c.hidden;if(c.hidden)return;$('prBody').innerHTML='<tr><td class="mut" style="padding:6px">טוען…</td></tr>';
  try{const r=await fetch('prices.json?t='+Date.now());const j=await r.json(),ch=j.chains||{},tot=536;
   $('prUpd').textContent='עדכון אחרון: '+(j.updated?new Date(j.updated*1000).toLocaleString('he-IL'):'—');
@@ -129,12 +142,12 @@ $('fSet').onclick=()=>{const c=$('setCard');c.hidden=!c.hidden;if(!c.hidden&&DAT
 $('sSave').onclick=async()=>{try{const r=await fetch(SB_URL+'/rest/v1/rpc/shop_super_pub',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({pass:PASS,price:$('sPrice').value.trim(),price_year:$('sYear').value.trim(),payinfo:$('sPay').value.trim()})});
  if(await r.json()){toast('נשמר');$('setCard').hidden=true;load()}else toast('נכשל')}catch(e){toast('אין חיבור')}};
 $('lf').addEventListener('submit',async e=>{e.preventDefault();$('err').textContent='';PASS=$('pw').value;
- try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
-$('ref').onclick=()=>load().then(()=>toast('עודכן')).catch(()=>toast('אין חיבור'));
+ try{if(await load()){try{sessionStorage.setItem('tg-sup',PASS)}catch(e){}$('login').hidden=true;$('app').hidden=false;loadHealth();timer=setInterval(()=>load().catch(()=>{}),30000)}else $('err').textContent='סיסמה שגויה (אחרי 5 ניסיונות נועל ל־15 דקות)'}catch(err){$('err').textContent='אין חיבור, נסו שוב'}});
+$('ref').onclick=()=>{loadHealth();load().then(()=>toast('עודכן')).catch(()=>toast('אין חיבור'))};
 $('out').onclick=()=>{try{sessionStorage.removeItem('tg-sup')}catch(e){}location.reload()};
 $('q').addEventListener('input',()=>DATA&&draw());
 let TH='light';try{TH=localStorage.getItem('tg-sup-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}
 const theme=t=>{TH=t;document.documentElement.dataset.theme=t;$('theme').textContent=t==='dark'?'☀️':'🌙';try{localStorage.setItem('tg-sup-theme',t)}catch(e){}};
 $('theme').onclick=()=>theme(TH==='dark'?'light':'dark');theme(TH);
-(async()=>{try{const s=sessionStorage.getItem('tg-sup');if(s){PASS=s;if(await load()){$('login').hidden=true;$('app').hidden=false;timer=setInterval(()=>load().catch(()=>{}),30000)}}}catch(e){}})();
+(async()=>{try{const s=sessionStorage.getItem('tg-sup');if(s){PASS=s;if(await load()){$('login').hidden=true;$('app').hidden=false;loadHealth();timer=setInterval(()=>load().catch(()=>{}),30000)}}}catch(e){}})();
 </script></body></html>
