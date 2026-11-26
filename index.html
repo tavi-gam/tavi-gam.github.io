@@ -495,6 +495,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     <p class="src">המחירים מתעדכנים כל בוקר מקובצי המחירים שהרשתות מפרסמות לפי חוק (סניף אחד בכל רשת). (3/5) = נמצאו 3 מתוך 5 מוצרים, ולשאר נלקח המחיר שברשימה. ויקטורי, קרפור, מחסני השוק וחצי חינם עדיין לא זמינות.</p>
   </section>
 
+  <section class="card" id="promoCard" hidden aria-labelledby="promoT">
+    <h3 id="promoT">🏷️ מבצעים על מה שברשימה</h3>
+    <div id="promoBody"></div>
+    <p class="src">מבצעים מקובצי המבצעים שהרשתות מפרסמות לפי חוק, באותו סניף של השוואת המחירים. מתעדכן כל בוקר. 👑 = רק לחברי מועדון.</p>
+  </section>
+
   <section class="card">
     <h3>מה כדאי לדעת לפני שיוצאים</h3>
     <ul class="tips">
@@ -1007,6 +1013,13 @@ function render(){try{quickBtn()}catch(e){}
  if($('chain').value!==CHAIN)$('chain').value=CHAIN;
  totals();grid();shopRender();presBanner();
 }
+function promoOf(n,ch){const o=offChain(ch);const m=o&&o.items&&o.items[n];return m&&m.s?m.s:null}
+function pdate(e){const p=String(e).split('-');return p.length===3?(+p[2])+'/'+(+p[1]):e}
+function promoRender(){const card=$('promoCard');if(!card)return;const open=list().filter(x=>!x.d);const myCh=OFFMAP[CHAIN]||CHAIN;const rows=[];
+ open.forEach(x=>{const hits=Object.keys(OFF).map(ch=>({ch,s:promoOf(x.n,ch)})).filter(h=>h.s);if(!hits.length)return;
+  hits.sort((a,b)=>(a.ch===myCh?-1:b.ch===myCh?1:a.s.p/a.s.q-b.s.p/b.s.q));
+  rows.push(`<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc(x.n)}</b>`+hits.slice(0,4).map(h=>`<div style="font-size:14px;margin-top:3px${h.ch===myCh?';font-weight:700;color:#1f8a4c':''}">${esc(h.ch)}: ${h.s.cl?'👑 ':''}${esc(h.s.d)}${h.s.e?` <span style="opacity:.7">· עד ${pdate(h.s.e)}</span>`:''}</div>`).join('')+'</div>')});
+ card.hidden=!rows.length;$('promoBody').innerHTML=rows.join('')}
 function sub(x){
  const r=REF[x.n],bits=[];
  if(x.p&&x.q>1)bits.push(money(x.p*x.q)+' סה״כ');
@@ -1014,6 +1027,7 @@ function sub(x){
  else if(x.src==='sale'){const e=saleOf(x.n);bits.push('🏷️ מבצע עד '+dshort(e.u)+(e.p?' · במקום '+money(e.p):''))}
  else if(x.src==='memo')bits.push('מחיר שמור ב'+CHAIN);
  else if(x.src==='official')bits.push('✓ מחיר אמיתי ב'+CHAIN);
+ const pm=promoOf(x.n,CHAIN);if(pm)bits.push('🏷️ '+(pm.cl?'👑 ':'')+pm.d+(pm.e?' · עד '+pdate(pm.e):''));
  else if(x.src==='other'){const o=otherChain(x.n);bits.push(o?'מחיר מ'+o[1]:'מחיר שמור')}
  else if(x.src==='rough')bits.push('הערכה גסה');
  else if(x.src==='est'&&EST[x.n])bits.push('הערכה · '+EST[x.n][1]);
@@ -1326,6 +1340,7 @@ function totals(){
   body=`<p>לפי המחירים האמיתיים של היום, ככה הרשימה שלכם (${open.length} מוצרים) יוצאת בכל רשת:</p><div class="rows">`+res.map(r=>`<div class="row${r.ch===myCh?' me':''}"><span>${r.ch===best.ch?'🏆 ':''}${esc(r.ch)}${r.got<open.length?`<small style="opacity:.7"> (${r.got}/${open.length})</small>`:''}</span><span class="t"><i style="width:${(r.sum/max*100).toFixed(1)}%"></i></span><span class="v">${money(r.sum)}</span></div>`).join('')+'</div>';
   const mine=res.find(r=>r.ch===myCh);if(mine&&mine.ch!==best.ch&&mine.sum-best.sum>1)body+=`<p class="src" style="color:var(--ink)">ב״${esc(best.ch)}״ הרשימה זולה ב־<b>${money(mine.sum-best.sum)}</b> מאשר ב״${esc(mine.ch)}״.</p>`}
  $('cmpBody').innerHTML=body;
+ try{promoRender()}catch(e){}
  cost();
 }
 /* ---------- actions ---------- */
