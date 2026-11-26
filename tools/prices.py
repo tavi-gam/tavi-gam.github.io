@@ -152,10 +152,11 @@ def fetch(chain, scr):
     return sorted(files, key=os.path.getsize, reverse=True)
 
 def main():
-    prev = {}
+    prev, prevdoc = {}, {}
     if os.path.exists(OUT):
         try:
-            prev = json.load(open(OUT, encoding='utf-8')).get('chains', {})
+            prevdoc = json.load(open(OUT, encoding='utf-8'))
+            prev = prevdoc.get('chains', {})
         except Exception:
             prev = {}
     res = dict(prev)
@@ -181,7 +182,27 @@ def main():
                 print('   ', k, '->', got[k]['n'], got[k]['p'])
         except Exception:
             print(f'[{chain}] FAILED'); traceback.print_exc()
-    json.dump({'updated': int(time.time()), 'chains': res}, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    # price changes vs the previous run (same chain and same branch only)
+    now = int(time.time())
+    changes = []
+    for chain, cur in res.items():
+        old = prev.get(chain)
+        if not old or old is cur or old.get('store') != cur.get('store'):
+            continue
+        for n, v in cur['items'].items():
+            o = old['items'].get(n)
+            if not o or not o.get('p') or o.get('k') != v.get('k'):
+                continue
+            a, b = float(o['p']), float(v['p'])
+            if abs(b - a) >= 0.3 and abs(b - a) / a >= 0.03:
+                changes.append({'ch': chain, 'n': n, 'old': a, 'new': b})
+    changes.sort(key=lambda c: -abs(c['new'] - c['old']) / c['old'])
+    hist = [h for h in prevdoc.get('history', []) if now - h.get('t', 0) < 30 * 86400]
+    if changes:
+        hist.insert(0, {'t': now, 'list': changes[:300]})
+    print(f'changes: {len(changes)}')
+    json.dump({'updated': now, 'changes': {'t': now, 'count': len(changes), 'list': changes[:300]}, 'history': hist[:30], 'chains': res},
+              open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 
 if __name__ == '__main__':
     main()
