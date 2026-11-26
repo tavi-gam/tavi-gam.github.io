@@ -18,13 +18,12 @@ jobs:
         run: |
           pip install il-supermarket-scraper 2>&1 | tail -3
           python - <<'PY'
-          import il_supermarket_scarper as m, inspect, pkgutil
-          print('VERSION', getattr(m,'__version__',None))
-          print('ATTRS', [a for a in dir(m) if not a.startswith('_')])
-          import il_supermarket_scarper.scrappers_factory as f
-          print('FACTORY', [a for a in dir(f) if not a.startswith('_')])
-          try:
-            print('SCRAPERS', [s.name for s in f.ScraperFactory])
-          except Exception as e: print('ERR',e)
-          print(inspect.signature(m.ScarpingTask.__init__))
+          import inspect, il_supermarket_scarper as m
+          from il_supermarket_scarper.scrappers_factory import ScraperFactory
+          print('START', inspect.signature(m.ScarpingTask.start))
+          c=ScraperFactory.get('RAMI_LEVY') if hasattr(ScraperFactory,'get') else ScraperFactory.RAMI_LEVY.value
+          print('CLS', c)
+          print('SCRAPE', inspect.signature(c.scrape))
+          print('INIT', inspect.signature(c.__init__))
+          print(inspect.getsource(m.ScarpingTask)[:3000])
           PY
