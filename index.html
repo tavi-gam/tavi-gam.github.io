@@ -545,7 +545,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <div class="sheet" id="nsheet" hidden><form class="sheetin" id="nform" role="dialog" aria-modal="true" aria-labelledby="nh">
   <h3 id="nh">➕ מוצר חדש לקטלוג</h3>
   <label class="plab">שם המוצר<input id="nn" maxlength="40" autocomplete="off" class="pdate" placeholder="למשל: חטיף חלבון שוקו בננה"></label>
-  <label class="plab">מחלקה<select id="nc" class="pdate"></select></label>
+  <label class="plab">מחלקה <small style="color:var(--mute);font-weight:500">· זוהתה אוטומטית</small><select id="nc" class="pdate"></select></label>
   <label class="plab">מחיר (לא חובה)</label>
   <div class="prow"><input id="np" inputmode="decimal" aria-label="מחיר בשקלים" autocomplete="off"><span>₪</span></div>
   <label class="stp"><input type="checkbox" id="nadd" checked> להוסיף גם לרשימה עכשיו</label>
@@ -692,7 +692,7 @@ const KW=[
  [13,'חתול|כלב|חול חתול|מזון לכל|מזון לחת|פרימיו|בוני|גולש|אקווריום|אוכל לכל|אוכל לחת|חטיף לכל|וופי|דוג|קט '],
 ];
 const guess=n=>{const w=' '+norm(n)+' ';const w2=norm(n);if(IDX[n]!=null)return IDX[n];
- if(/^(גלידה|שלגון|קרטיב|ארטיק|קורנטו|מגנום)/.test(w2))return 9;
+ if(/^(גליד|שלגון|קרטיב|ארטיק|קורנטו|מגנום)/.test(w2))return 9;
  for(const k of ALL)if(norm(k)===w2)return IDX[k];
  for(const k of ALL)if(norm(k).startsWith(w2)||w2.startsWith(norm(k)))return IDX[k];
  for(const k of ALL){const kk=norm(k);if(kk.length>2&&(w2.includes(kk)||kk.includes(w2)))return IDX[k]}
@@ -969,9 +969,12 @@ function annShow(v){let el=document.getElementById('ann');if(el)el.remove();if(!
 function pushCat(){saveLocal();if(DB&&!READONLY)DB.doc('settings/catalog').set({items:MYCAT}).catch(()=>toast('השמירה נכשלה. נסו שוב'))}
 function openNew(name){$('nc').innerHTML=AISLES.map((a,i)=>`<option value="${i}">${esc(a)}</option>`).join('');
  $('nn').value=name||'';$('nc').value=String(CUR>=0?CUR:name?guess(name):AISLES.length-1);$('np').value='';$('nadd').checked=true;
- $('nsheet').hidden=false;setTimeout(()=>$('nn').focus(),30)}
+ ncTouched=false;$('nsheet').hidden=false;setTimeout(()=>$('nn').focus(),30)}
 $('nclose').addEventListener('click',()=>{$('nsheet').hidden=true});
 $('nsheet').addEventListener('click',e=>{if(e.target.id==='nsheet')$('nsheet').hidden=true});
+let ncTouched=false;
+$('nc').addEventListener('change',()=>{ncTouched=true});
+$('nn').addEventListener('input',()=>{if(ncTouched)return;const v=$('nn').value.trim();if(v)$('nc').value=String(guess(v))});
 $('nform').addEventListener('submit',e=>{e.preventDefault();const n=$('nn').value.trim().replace(/\s+/g,' ').slice(0,40),c=+$('nc').value;
  if(n.length<2){toast('הקלידו שם מוצר');return}
  if(IDX[n]!=null&&!CUSTOM.has(n)){toast(`"${n}" כבר בקטלוג`);$('nsheet').hidden=true;if($('nadd').checked){add(n);render()}return}
