@@ -6,11 +6,10 @@ on:
         description: 'chains (space separated, empty = all)'
         required: false
         default: ''
+  # Primary trigger is Supabase pg_cron (reliable, dispatches at 02:30 UTC).
+  # This schedule is only a backup in case Supabase is down; the job skips if already fresh.
   schedule:
-    - cron: '7 0 * * *'
-    - cron: '7 1 * * *'
-    - cron: '7 2 * * *'
-    - cron: '7 3 * * *'
+    - cron: '7 4 * * *'
 permissions:
   contents: write
 concurrency: prices
