@@ -20,12 +20,27 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: skip if already updated today
+        id: fresh
+        run: |
+          skip=no
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -f prices.json ]; then
+            now=$(date -u +%s)
+            upd=$(python3 -c "import json;print(int(json.load(open('prices.json'))['updated']))" 2>/dev/null || echo 0)
+            age=$(( now - upd ))
+            if [ "$age" -lt 64800 ]; then echo "prices are $((age/3600))h old (<18h) — skipping"; skip=yes; fi
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
+        if: steps.fresh.outputs.skip != 'yes'
         with: { python-version: '3.11' }
       - run: pip install -q il-supermarket-scraper
+        if: steps.fresh.outputs.skip != 'yes'
       - name: build prices.json
+        if: steps.fresh.outputs.skip != 'yes'
         run: python tools/prices.py ${{ github.event.inputs.chains }}
       - name: commit
+        if: steps.fresh.outputs.skip != 'yes'
         run: |
           git config user.name "tavi-gam prices bot"
           git config user.email "prices-bot@users.noreply.github.com"
